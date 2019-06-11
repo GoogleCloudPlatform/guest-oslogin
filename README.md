@@ -71,7 +71,7 @@ is activated by adding `oslogin` and `cache_oslogin` entries for services in
 
 *   To return a list of all users, the NSS module queries:
     ```
-    http://metadata.google.internal/computeMetadata/v1/oslogin/users?pagesize=<pagesize>
+    http://metadata.google.internal/computeMetadata/v1/oslogin/users
     ```
 *   To look up a user by username, the NSS module queries:
     ```
@@ -80,6 +80,12 @@ is activated by adding `oslogin` and `cache_oslogin` entries for services in
 *   To look up a user by UID, the NSS module queries:
     ```
     http://metadata.google.internal/computeMetadata/v1/oslogin/users?uid=<uid>
+    ```
+*   For the corresponding group lookups, replace 'users','username','uid' with
+    'groups','groupname','gid' in the above calls.
+*   To get groups a given user is a member of, the NSS module queries:
+    ```
+    http://metadata.google.internal/computeMetadata/v1/oslogin/groups?username=<username>
     ```
 
 #### PAM Modules
@@ -95,10 +101,7 @@ config for sshd as:
 
 This module:
 
-*   Retrieves the user's profile information from the metadata server:
-    ```
-    http://metadata.google.internal/computeMetadata/v1/oslogin/users?username=<username>
-    ```
+*   Retrieves the user's profile information from the metadata server.
 *   If the user does not have OS Login profile information it is passed on to
     the system authentication modules to be processed as a local user.
 *   Otherwise, the module confirms whether the user has permissions to SSH into

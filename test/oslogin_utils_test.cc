@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2019 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ TEST(NssCacheTest, TestLoadJsonArray) {
   string response = "{\"loginProfiles\": [" + test_user1 + ", " + test_user2 +
                     "], \"nextPageToken\": \"token\"}";
 
-  ASSERT_TRUE(nss_cache.LoadJsonArrayToCache(response));
+  ASSERT_TRUE(nss_cache.LoadJsonUsersToCache(response));
 
   size_t buflen = 500;
   char* buffer = (char*)malloc(buflen * sizeof(char));
@@ -83,7 +83,7 @@ TEST(NssCacheTest, TestLoadJsonArray) {
   int test_errno = 0;
 
   // Verify that the first user was stored.
-  ASSERT_TRUE(nss_cache.HasNextPasswd());
+  ASSERT_TRUE(nss_cache.HasNextEntry());
   ASSERT_TRUE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
   ASSERT_EQ(test_errno, 0);
   ASSERT_EQ(result.pw_uid, 1337);
@@ -93,7 +93,7 @@ TEST(NssCacheTest, TestLoadJsonArray) {
   ASSERT_STREQ(result.pw_dir, "/home/foo");
 
   // Verify that the second user was stored.
-  ASSERT_TRUE(nss_cache.HasNextPasswd());
+  ASSERT_TRUE(nss_cache.HasNextEntry());
   ASSERT_TRUE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
   ASSERT_EQ(test_errno, 0);
   ASSERT_EQ(result.pw_uid, 1338);
@@ -103,7 +103,7 @@ TEST(NssCacheTest, TestLoadJsonArray) {
   ASSERT_STREQ(result.pw_dir, "/home/bar");
 
   // Verify that there are no more users stored.
-  ASSERT_FALSE(nss_cache.HasNextPasswd());
+  ASSERT_FALSE(nss_cache.HasNextEntry());
   ASSERT_FALSE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
   ASSERT_EQ(test_errno, ENOENT);
 }
@@ -118,7 +118,7 @@ TEST(NssCacheTest, TestLoadJsonPartialArray) {
   string response =
       "{\"loginProfiles\": [" + test_user1 + "], \"nextPageToken\": \"token\"}";
 
-  ASSERT_TRUE(nss_cache.LoadJsonArrayToCache(response));
+  ASSERT_TRUE(nss_cache.LoadJsonUsersToCache(response));
 
   size_t buflen = 500;
   char* buffer = (char*)malloc(buflen * sizeof(char));
@@ -128,7 +128,7 @@ TEST(NssCacheTest, TestLoadJsonPartialArray) {
   int test_errno = 0;
 
   // Verify that the first user was stored.
-  ASSERT_TRUE(nss_cache.HasNextPasswd());
+  ASSERT_TRUE(nss_cache.HasNextEntry());
   ASSERT_TRUE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
   ASSERT_EQ(test_errno, 0);
   ASSERT_EQ(result.pw_uid, 1337);
@@ -140,7 +140,7 @@ TEST(NssCacheTest, TestLoadJsonPartialArray) {
   ASSERT_EQ(nss_cache.GetPageToken(), "token");
 
   // Verify that there are no more users stored.
-  ASSERT_FALSE(nss_cache.HasNextPasswd());
+  ASSERT_FALSE(nss_cache.HasNextEntry());
   ASSERT_FALSE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
   ASSERT_EQ(test_errno, ENOENT);
 }
@@ -150,7 +150,7 @@ TEST(NssCacheTest, TestLoadJsonFinalResponse) {
   NssCache nss_cache(2);
   string response = "{\"nextPageToken\": \"0\"}";
 
-  ASSERT_FALSE(nss_cache.LoadJsonArrayToCache(response));
+  ASSERT_FALSE(nss_cache.LoadJsonUsersToCache(response));
   ASSERT_EQ(nss_cache.GetPageToken(), "");
 
   size_t buflen = 500;
@@ -161,17 +161,17 @@ TEST(NssCacheTest, TestLoadJsonFinalResponse) {
   int test_errno = 0;
 
   // Verify that there are no more users stored.
-  ASSERT_FALSE(nss_cache.HasNextPasswd());
+  ASSERT_FALSE(nss_cache.HasNextEntry());
   ASSERT_TRUE(nss_cache.OnLastPage());
   ASSERT_FALSE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
   ASSERT_EQ(test_errno, ENOENT);
 }
 
-// Tests that resetting, and checking HasNextPasswd does not crash.
+// Tests that resetting, and checking HasNextEntry does not crash.
 TEST(NssCacheTest, ResetNullPtrTest) {
   NssCache nss_cache(2);
   nss_cache.Reset();
-  ASSERT_FALSE(nss_cache.HasNextPasswd());
+  ASSERT_FALSE(nss_cache.HasNextEntry());
 }
 
 // Test parsing a valid JSON response from the metadata server.
@@ -426,8 +426,7 @@ TEST(ParseJsonToUsersTest, ParseJsonToUsersFails) {
 TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {
   string response;
   long http_code;
-  ASSERT_TRUE(
-      HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
 
   std::vector<string> users;
   int errnop = 0;
@@ -441,8 +440,7 @@ TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {
 TEST(FindGroupTest, FindGroupByGidSucceeds) {
   string response;
   long http_code;
-  ASSERT_TRUE(
-      HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
 
   size_t buflen = 200 * sizeof(char);
   char* buffer = (char*)malloc(buflen);
@@ -459,8 +457,7 @@ TEST(FindGroupTest, FindGroupByGidSucceeds) {
 TEST(FindGroupTest, FindGroupByNameSucceeds) {
   string response;
   long http_code;
-  ASSERT_TRUE(
-      HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
 
   size_t buflen = 200 * sizeof(char);
   char* buffer = (char*)malloc(buflen);
@@ -620,6 +617,34 @@ TEST(ParseJsonChallengesTest, TestMalformedChallenges) {
   ASSERT_FALSE(ParseJsonToChallenges(challenges_json, &challenges));
   ASSERT_EQ(challenges.size(), 1);
 }
+
+TEST(ParseJsonToGroupTest, TestGroups) {
+  size_t buflen = 20;
+  char* buffer = (char*)malloc(buflen *sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+
+  oslogin_utils::BufferManager buffer_manager(buffer, buflen);
+
+  string group_json = "{\"name\":\"mygroup\",\"gid\":\"123452\"}";
+  struct group result;
+  int error_code;
+  ASSERT_TRUE(ParseJsonToGroup(group_json, &result, &buffer_manager, &error_code));
+  ASSERT_EQ(result.gr_gid, 123452);
+  ASSERT_STREQ(result.gr_name, "mygroup");
+  ASSERT_STREQ(result.gr_passwd, "");
+}
+
+TEST(ParseJsonToGroupsTest, TestGroups) {
+  string group_json = "{\"posixGroups\": [{\"name\":\"mygroup\",\"gid\":\"123452\"},{\"name\":\"mygroup2\",\"gid\":\"123453\"}]}";
+  vector<Group> groups;
+  ASSERT_TRUE(ParseJsonToGroups(group_json, &groups));
+  ASSERT_EQ(groups.size(), 2);
+  ASSERT_EQ(groups[0].gid, 123452);
+  ASSERT_EQ(groups[1].gid, 123453);
+  ASSERT_STREQ(groups[0].name.c_str(), "mygroup");
+  ASSERT_STREQ(groups[1].name.c_str(), "mygroup2");
+}
+
 }  // namespace oslogin_utils
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

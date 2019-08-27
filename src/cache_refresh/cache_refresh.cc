@@ -1,7 +1,5 @@
 // Copyright 2018 Google Inc. All Rights Reserved.
 //
-//
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,7 +21,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <sstream>
-
 
 #include <fstream>
 
@@ -74,7 +71,9 @@ int refreshpasswdcache() {
     if (!nss_cache.NssGetpwentHelper(&buffer_manager, &pwd, &error_code)) {
       break;
     }
-    cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir << ":" << pwd.pw_shell << "\n";
+    cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
+               << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir
+               << ":" << pwd.pw_shell << "\n";
     count++;
   }
   cache_file.close();

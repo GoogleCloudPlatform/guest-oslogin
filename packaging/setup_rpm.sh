@@ -13,24 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
 
 NAME="google-compute-engine-oslogin"
 VERSION="20190801.00"
 
 rpm_working_dir=/tmp/rpmpackage/${NAME}-${VERSION}
 working_dir=${PWD}
-if [[ $(basename "$working_dir") != $NAME ]]; then
+if [[ ! -d packaging ]]; then
   echo "Packaging scripts must be run from top of package dir."
   exit 1
 fi
 
-sudo yum -y install rpmdevtools make gcc-c++ json-c \
+yum -y install rpmdevtools make gcc-c++ json-c \
   libcurl-devel pam-devel boost-devel json-c-devel
 
 if grep -q '^\(CentOS\|Red Hat\)[^0-9]*8\..' /etc/redhat-release; then
-  sudo yum -y install python3-policycoreutils
+  yum -y install python3-policycoreutils
 else
-  sudo yum -y install policycoreutils-python
+  yum -y install policycoreutils-python
 fi
 
 rm -rf /tmp/rpmpackage

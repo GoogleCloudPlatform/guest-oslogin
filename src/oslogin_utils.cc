@@ -186,16 +186,15 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
     page_token_ = json_object_get_string(page_token_object);
   } else {
     // If the page token is not found, assume something went wrong.
-    // TODO: amend this to match loadjsonusers.. when page tokens are available.
-    page_token_ = "";
-    on_last_page_ = true;
-  }
-  // A page_token of 0 means we are done. This response will not contain any
-  // login profiles.
-  if (page_token_ == "0") {
     page_token_ = "";
     on_last_page_ = true;
     return false;
+  }
+  // A page_token of 0 means we are done. This response will contain the last
+  // page of groups.
+  if (page_token_ == "0") {
+    page_token_ = "";
+    on_last_page_ = true;
   }
   json_object* groups = NULL;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
@@ -856,7 +855,7 @@ bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) 
 
   do {
     url.str("");
-    url << kMetadataServerUrl << "groups?username=" << email;
+    url << kMetadataServerUrl << "groups?email=" << email;
     if (pageToken != "")
       url << "?pageToken=" << pageToken;
 

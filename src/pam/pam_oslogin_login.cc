@@ -192,11 +192,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
   oslogin_utils::Challenge challenge;
   if (challenges.size() > 1) {
     std::stringstream prompt;
-    prompt << "Available authentication methods: ";
+    prompt << "Please choose from the available authentication methods: ";
     for(vector<oslogin_utils::Challenge>::size_type i = 0;
         i != challenges.size(); ++i)
       prompt << "\n" << i+1 << ": " << user_prompts[challenges[i].type];
-    prompt << "\n\nEnter a number: ";
+    prompt << "\n\nEnter the number for the authentication method to use: ";
 
     char *choice = NULL;
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &choice, "%s",

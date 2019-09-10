@@ -1,6 +1,8 @@
 TOPDIR = $(realpath ..)
 
-CPPFLAGS += -I$(TOPDIR)/src/include -I/usr/include/json-c
+GTEST = /usr/src/googletest/googletest
+
+CPPFLAGS += -I$(TOPDIR)/src/include -I/usr/include/json-c -I$(GTEST) -isystem $(GTEST)/include
 CXXFLAGS += -g -Wall -Wextra -std=c++11
 LDLIBS = -lcurl -ljson-c -lpthread
 
@@ -9,8 +11,8 @@ all : test_runner non_network_tests
 clean :
 	rm -f test_runner *.o
 
-gtest-all.o : $(GTEST_DIR)/src/gtest-all.cc
-	$(CXX) $(CXXFLAGS) -isystem $(GTEST)/include -I$(GTEST) $(CPPFLAGS) -c $^
+gtest-all.o : $(GTEST)/src/gtest-all.cc
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $^
 
 test_runner : oslogin_utils_test.o $(TOPDIR)/src/utils.o gtest-all.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)

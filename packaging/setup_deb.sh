@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 NAME="google-compute-engine-oslogin"
 VERSION="20190801.00"
 
@@ -23,14 +25,14 @@ if [[ -z $DEB ]]; then
 fi
 
 working_dir=${PWD}
-if [[ $(basename "$working_dir") != $NAME ]]; then
+if [[ ! -d packaging ]]; then
   echo "Packaging scripts must be run from top of package dir."
   exit 1
 fi
 
 # Build dependencies.
 echo "Installing dependencies."
-sudo apt-get -y install make g++ libcurl4-openssl-dev libjson-c-dev libpam-dev \
+apt-get -y install make g++ libcurl4-openssl-dev libjson-c-dev libpam-dev \
   debhelper devscripts build-essential >/dev/null
 
 rm -rf /tmp/debpackage

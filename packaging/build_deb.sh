@@ -15,8 +15,10 @@
 
 set -e
 
-NAME="google-compute-engine-oslogin"
-VERSION="20190801.00"
+DEBIAN_FRONTEND=noninteractive
+dpkg_working_dir="/tmp/debpackage"
+
+. packaging/common.sh
 
 DEB=$(cut -d. -f1 </etc/debian_version)
 if [[ -z $DEB ]]; then
@@ -24,33 +26,28 @@ if [[ -z $DEB ]]; then
   exit 1
 fi
 
-working_dir=${PWD}
-if [[ ! -d packaging ]]; then
-  echo "Packaging scripts must be run from top of package dir."
-  exit 1
-fi
-
 # Build dependencies.
 echo "Installing dependencies."
-apt-get -y install make g++ libcurl4-openssl-dev libjson-c-dev libpam-dev \
-  debhelper devscripts build-essential >/dev/null
+try_command apt-get -y install make g++ libcurl4-openssl-dev libjson-c-dev \
+  libpam-dev debhelper devscripts build-essential >/dev/null
 
-rm -rf /tmp/debpackage
-mkdir /tmp/debpackage
-tar czvf /tmp/debpackage/${NAME}_${VERSION}.orig.tar.gz  --exclude .git \
-  --exclude packaging --transform "s/^\./${NAME}-${VERSION}/" .
+dpkg-checkbuilddeps packaging/debian/control
 
-pushd /tmp/debpackage
-tar xzvf ${NAME}_${VERSION}.orig.tar.gz
+echo "Building package"
+[[ -d $dpkg_working_dir ]] && rm -rf $dpkg_working_dir
+mkdir $dpkg_working_dir
+tar czvf /tmp/debpackage/${PKGNAME}_${VERSION}.orig.tar.gz  --exclude .git \
+  --exclude packaging --transform "s/^\./${PKGNAME}-${VERSION}/" .
 
-cd ${NAME}-${VERSION}
+working_dir=${PWD}
+cd $dpkg_working_dir
+tar xzvf ${PKGNAME}_${VERSION}.orig.tar.gz
+
+cd ${PKGNAME}-${VERSION}
 
 cp -r ${working_dir}/packaging/debian ./
 echo "Building on Debian ${DEB}, modifying latest changelog entry."
-sed -r -i"" "1s/^${NAME} \((.*)\) (.+;.*)/${NAME} (\1+deb${DEB}) \2/" \
+sed -r -i"" "1s/^${PKGNAME} \((.*)\) (.+;.*)/${PKGNAME} (\1+deb${DEB}) \2/" \
   debian/changelog
 
-echo "Starting build"
 DEB_BUILD_OPTIONS=noddebs debuild -us -uc
-
-popd

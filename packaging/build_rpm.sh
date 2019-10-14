@@ -15,15 +15,9 @@
 
 set -e
 
-NAME="google-compute-engine-oslogin"
-VERSION="20190801.00"
+rpm_working_dir=/tmp/rpmpackage/
 
-rpm_working_dir=/tmp/rpmpackage/${NAME}-${VERSION}
-working_dir=${PWD}
-if [[ ! -d packaging ]]; then
-  echo "Packaging scripts must be run from top of package dir."
-  exit 1
-fi
+. packaging/common.sh
 
 yum -y install rpmdevtools make gcc-c++ json-c \
   libcurl-devel pam-devel boost-devel json-c-devel
@@ -36,9 +30,11 @@ fi
 
 rm -rf /tmp/rpmpackage
 mkdir -p ${rpm_working_dir}/{SOURCES,SPECS}
-cp packaging/${NAME}.spec ${rpm_working_dir}/SPECS/
 
-tar czvf ${rpm_working_dir}/SOURCES/${NAME}_${VERSION}.orig.tar.gz  --exclude .git --exclude packaging --transform "s/^\./${NAME}-${VERSION}/" .
+cp packaging/${PKGNAME}.spec ${rpm_working_dir}/SPECS/
+
+tar czvf ${rpm_working_dir}/SOURCES/${PKGNAME}_${VERSION}.orig.tar.gz \
+  --exclude .git --exclude packaging --transform "s/^\./${PKGNAME}-${VERSION}/" .
 
 rpmbuild --define "_topdir ${rpm_working_dir}/" --define "_version ${VERSION}" \
-  -ba ${rpm_working_dir}/SPECS/${NAME}.spec
+  --define "_arch x86_64" -ba ${rpm_working_dir}/SPECS/${PKGNAME}.spec

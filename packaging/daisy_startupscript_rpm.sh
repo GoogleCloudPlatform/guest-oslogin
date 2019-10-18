@@ -49,5 +49,6 @@ git_checkout "$BASE_REPO" "$REPO" "$PULL_REF"
 
 packaging/build_rpm.sh
 gsutil cp /tmp/rpmpackage/RPMS/x86_64/*.rpm "${GCS_PATH}/"
+gsutil cp /tmp/rpmpackage/SRPMS/*.rpm "${GCS_PATH}/"
 
 echo "Package build success: built `echo /tmp/rpmpackage/RPMS/x86_64/*.rpm|xargs -n1 basename`"

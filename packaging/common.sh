@@ -14,7 +14,7 @@
 # limitations under the License.
 
 export PKGNAME="google-compute-engine-oslogin"
-export VERSION="20191014.00"
+export VERSION="20191018.00"
 
 function exit_error() {
   echo "build failed: $0:$1 \"$BASH_COMMAND\" returned $?"

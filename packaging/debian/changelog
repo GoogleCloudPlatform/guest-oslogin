@@ -1,3 +1,9 @@
+google-compute-engine-oslogin (1:20191018.00-g1) stable; urgency=medium
+
+  * Correct JSON refcount decrementing (regression).
+
+ -- Google Cloud Team <gc-team@google.com>  Fri, 18 Oct 2019 12:54:15 -0700
+
 google-compute-engine-oslogin (1:20191014.00-g1) stable; urgency=medium
 
   * Groups support.

@@ -230,10 +230,10 @@ enum nss_status _nss_cache_oslogin_setgrent(int stayopen) {
   return ret;
 }
 
-// _nss_cache_endgrent_locked()
+// _nss_cache_oslogin_endgrent_locked()
 // Internal close routine
 
-static enum nss_status _nss_cache_endgrent_locked(void) {
+static enum nss_status _nss_cache_oslogin_endgrent_locked(void) {
   DEBUG("%s %s\n", "Closing", OSLOGIN_GROUP_CACHE_PATH);
   if (g_file) {
     fclose(g_file);
@@ -242,13 +242,13 @@ static enum nss_status _nss_cache_endgrent_locked(void) {
   return NSS_STATUS_SUCCESS;
 }
 
-// _nss_cache_endgrent()
+// _nss_cache_oslogin_endgrent()
 // Called by NSS to close the group file
 
-enum nss_status _nss_cache_endgrent(void) {
+enum nss_status _nss_cache_oslogin_endgrent(void) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_endgrent_locked();
+  ret = _nss_cache_oslogin_endgrent_locked();
   NSS_CACHE_OSLOGIN_UNLOCK();
   return ret;
 }
@@ -351,7 +351,7 @@ enum nss_status _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
     }
   }
 
-  _nss_cache_endgrent_locked();
+  _nss_cache_oslogin_endgrent_locked();
   NSS_CACHE_OSLOGIN_UNLOCK();
 
   return ret;
@@ -403,7 +403,7 @@ enum nss_status _nss_cache_oslogin_getgrnam_r(const char *name, struct group *re
     }
   }
 
-  _nss_cache_endgrent_locked();
+  _nss_cache_oslogin_endgrent_locked();
   NSS_CACHE_OSLOGIN_UNLOCK();
 
   return ret;

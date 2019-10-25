@@ -44,6 +44,7 @@ modify_nsswitch_conf() {
 
   if is_freebsd && grep -q '^passwd:.*compat' "$nss_config"; then
     $sed -i"" '/^passwd:/ s/compat/files/' "$nss_config"
+    $sed -i"" '/^group:/ s/compat/files/' "$nss_config"
   fi
 }
 
@@ -54,6 +55,7 @@ restore_nsswitch_conf() {
   $sed -i"" '/^group:/ s/ cache_oslogin oslogin//' "$nss_config"
   if is_freebsd; then
     $sed -i"" '/^passwd:/ s/files/compat/' "$nss_config"
+    $sed -i"" '/^group:/ s/files/compat/' "$nss_config"
   fi
 }
 

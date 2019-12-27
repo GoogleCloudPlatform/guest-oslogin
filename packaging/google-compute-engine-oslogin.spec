@@ -41,6 +41,7 @@ Requires:  policycoreutils-python
 %endif
 Requires:  boost-regex
 Requires: json-c
+Requires: crontabs
 
 %description
 This package contains several libraries and changes to enable OS Login functionality
@@ -74,6 +75,7 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
 %{_mandir}/man8/libnss_oslogin.so.2.8.gz
 %{_mandir}/man8/nss-cache-oslogin.8.gz
 %{_mandir}/man8/libnss_cache_oslogin.so.2.8.gz
+%config(noreplace) /etc/cron.d/%{name}
 
 %post
 /sbin/ldconfig

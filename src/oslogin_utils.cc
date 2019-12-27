@@ -415,7 +415,7 @@ bool ParseJsonToUsers(const string& json, std::vector<string>* result) {
   if (json_object_get_type(users) != json_type_array) {
     return false;
   }
-  for (int idx=0; idx < json_object_array_length(users); idx++) {
+  for (int idx=0; idx < (int)json_object_array_length(users); idx++) {
     json_object* user = json_object_array_get_idx(users, idx);
     const char* username = json_object_get_string(user);
     result->push_back(string(username));
@@ -437,7 +437,7 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
   if (json_object_get_type(groups) != json_type_array) {
     return false;
   }
-  for (int idx = 0; idx < json_object_array_length(groups); idx++) {
+  for (int idx = 0; idx < (int)json_object_array_length(groups); idx++) {
     json_object* group = json_object_array_get_idx(groups, idx);
 
     json_object* gid;
@@ -744,7 +744,7 @@ bool ParseJsonToChallenges(const string& json, std::vector<Challenge>* challenge
   }
 
   json_object *challengeId, *challengeType, *challengeStatus = NULL;
-  for (int i = 0; i < json_object_array_length(jsonChallenges); ++i) {
+  for (int i = 0; i < (int)json_object_array_length(jsonChallenges); ++i) {
     if (!json_object_object_get_ex(json_object_array_get_idx(jsonChallenges, i),
                                    "challengeId", &challengeId)) {
       return false;

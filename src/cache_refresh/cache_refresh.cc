@@ -40,19 +40,20 @@ static const char kDefaultBackupGroupPath[] = K_DEFAULT_BACKUP_GFILE_PATH;
 
 // Local NSS Cache size. This affects the maximum number of passwd or group
 // entries per http request.
-static const uint64_t kNssCacheSize = 499;
+static const uint64_t kNssGroupCacheSize = 499;
+static const uint64_t kNssPasswdCacheSize = 2048;
 
 // Passwd buffer size. We are guaranteed that a single OS Login user will not
 // exceed 32k.
 static const uint64_t kPasswdBufferSize = 32768;
-
-static NssCache nss_cache(kNssCacheSize);
 
 int refreshpasswdcache() {
   int error_code = 0;
   // Temporary buffer to hold passwd entries before writing.
   char buffer[kPasswdBufferSize];
   struct passwd pwd;
+  NssCache nss_cache(kNssPasswdCacheSize);
+
 
   std::ofstream cache_file(kDefaultBackupFilePath);
   if (cache_file.fail()) {
@@ -107,6 +108,7 @@ int refreshgroupcache() {
   int error_code = 0;
   // Temporary buffer to hold passwd entries before writing.
   char buffer[kPasswdBufferSize];
+  NssCache nss_cache(kNssGroupCacheSize);
 
   std::ofstream cache_file(kDefaultBackupGroupPath);
   if (cache_file.fail()) {

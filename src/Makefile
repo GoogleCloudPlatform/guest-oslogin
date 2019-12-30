@@ -19,6 +19,7 @@ LIBDIR = $(PREFIX)/lib
 BINDIR = $(PREFIX)/bin
 PAMDIR = $(LIBDIR)/security
 MANDIR = /usr/share/man
+CRONDIR = /etc/cron.d
 
 NSS_OSLOGIN_SONAME       = libnss_oslogin.so.2
 NSS_CACHE_OSLOGIN_SONAME = libnss_cache_oslogin.so.2
@@ -66,15 +67,23 @@ google_oslogin_nss_cache: cache_refresh/cache_refresh.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 install: all
+	# Make dirs
 	install -d $(DESTDIR)$(LIBDIR)
 	install -d $(DESTDIR)$(PAMDIR)
 	install -d $(DESTDIR)$(BINDIR)
+	install -d $(DESTDIR)$(CRONDIR)
 	install -d $(DESTDIR)$(MANDIR)/man8
+	# NSS modules
 	install -m 0644 -t $(DESTDIR)$(LIBDIR) $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN)
 	ln -sf $(NSS_OSLOGIN)         $(DESTDIR)$(LIBDIR)/$(NSS_OSLOGIN_SONAME)
 	ln -sf $(NSS_CACHE_OSLOGIN)   $(DESTDIR)$(LIBDIR)/$(NSS_CACHE_OSLOGIN_SONAME)
+	# PAM modules
 	install -m 0644 -t $(DESTDIR)$(PAMDIR) $(PAM_ADMIN) $(PAM_LOGIN)
+	# Control file
 	install -m 0755 -t $(DESTDIR)$(BINDIR) $(BINARIES) $(TOPDIR)/google_oslogin_control
+	# Cache refresh cron
+	install -m 0644 $(TOPDIR)/cron.d $(DESTDIR)$(CRONDIR)/google-compute-engine-oslogin
+	# Manpages
 	install -m 0644 -t $(DESTDIR)$(MANDIR)/man8 $(TOPDIR)/man/nss-oslogin.8 $(TOPDIR)/man/nss-cache-oslogin.8
 	gzip -9 $(DESTDIR)$(MANDIR)/man8/nss-oslogin.8
 	gzip -9 $(DESTDIR)$(MANDIR)/man8/nss-cache-oslogin.8

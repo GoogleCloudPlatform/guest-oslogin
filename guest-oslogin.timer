@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh the NSS cache
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target

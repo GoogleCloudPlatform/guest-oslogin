@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh the OSLogin NSS cache
+Description=NSS cache refresh
 
 [Service]
 Type=oneshot

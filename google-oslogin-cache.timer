@@ -1,8 +1,9 @@
 [Unit]
-Description=Refresh the NSS cache
+Description=NSS cache refresh timer
 
 [Timer]
 OnBootSec=5
 OnUnitActiveSec=6h
 
-# No [Install] section - DefaultDependencies are enough.
+[Install]
+WantedBy=timers.target

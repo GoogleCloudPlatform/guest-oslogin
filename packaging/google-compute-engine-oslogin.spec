@@ -86,12 +86,12 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 %else
 /lib/systemd/system/google-oslogin-cache.service
 /lib/systemd/system/google-oslogin-cache.timer
+/lib/systemd/system-preset/90-google-compute-engine-oslogin.preset
 %endif
 
 %post
 %if 0%{?rhel} != 6
 %systemd_post google-oslogin-cache.timer
-%systemd_post google-oslogin-cache.service
 %endif
 /sbin/ldconfig
 if [ $1 -gt 1 ]; then  # This is an upgrade.
@@ -109,13 +109,11 @@ fi
 %preun
 %if 0%{?rhel} != 6
 %systemd_preun google-oslogin-cache.timer
-%systemd_preun google-oslogin-cache.service
 %endif
 
 %postun
 %if 0%{?rhel} != 6
-%systemd_postun google-oslogin-cache.timer
-%systemd_postun google-oslogin-cache.service
+%systemd_postun
 %endif
 
 /sbin/ldconfig

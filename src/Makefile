@@ -21,6 +21,7 @@ PAMDIR = $(LIBDIR)/security
 MANDIR = /usr/share/man
 CRONDIR = /etc/cron.d
 SYSTEMDDIR = /lib/systemd/system
+PRESETDIR = /lib/systemd/system-preset
 
 NSS_OSLOGIN_SONAME       = libnss_oslogin.so.2
 NSS_CACHE_OSLOGIN_SONAME = libnss_cache_oslogin.so.2
@@ -100,4 +101,6 @@ else
 	# Cache refresh systemd timer
 	install -d $(DESTDIR)$(SYSTEMDDIR)
 	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.{service,timer}
+	install -d $(DESTDIR)$(PRESETDIR)
+	install -m 0644 -t $(DESTDIR)$(PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif

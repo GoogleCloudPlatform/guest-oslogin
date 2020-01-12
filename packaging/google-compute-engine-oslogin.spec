@@ -41,7 +41,9 @@ Requires:  policycoreutils-python
 %endif
 Requires:  boost-regex
 Requires: json-c
+%if 0%{?rhel} == 6
 Requires: crontabs
+%endif
 
 %description
 This package contains several libraries and changes to enable OS Login functionality
@@ -57,7 +59,11 @@ make %{?_smp_mflags} LDLIBS="-lcurl -ljson-c -lboost_regex"
 
 %install
 rm -rf %{buildroot}
+%if 0%{?rhel} == 6
+make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y INSTALL_CRON=y
+%else
 make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
+%endif
 
 %files
 %doc
@@ -75,9 +81,16 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
 %{_mandir}/man8/libnss_oslogin.so.2.8.gz
 %{_mandir}/man8/nss-cache-oslogin.8.gz
 %{_mandir}/man8/libnss_cache_oslogin.so.2.8.gz
+%if 0%{?rhel} == 6
 %config(noreplace) /etc/cron.d/%{name}
+%else
+/lib/systemd/system/google-oslogin-cache.service
+/lib/systemd/system/google-oslogin-cache.timer
+%endif
 
 %post
+%systemd_post google-oslogin-cache.timer
+%systemd_post google-oslogin-cache.service
 /sbin/ldconfig
 if [ $1 -gt 1 ]; then  # This is an upgrade.
   if semodule -l | grep -qi oslogin.el6; then
@@ -91,7 +104,14 @@ if [ -e /var/google-sudoers.d ]; then
   fixfiles restore /var/google-sudoers.d
 fi
 
+%preun
+%systemd_preun google-oslogin-cache.timer
+%systemd_preun google-oslogin-cache.service
+
 %postun
+%systemd_postun google-oslogin-cache.timer
+%systemd_postun google-oslogin-cache.service
+
 /sbin/ldconfig
 if [ $1 = 0 ]; then  # This is an uninstall.
   if semodule -l|grep -qi oslogin; then
@@ -99,5 +119,6 @@ if [ $1 = 0 ]; then  # This is an uninstall.
     semodule -r oslogin
   fi
 fi
+
 
 %changelog

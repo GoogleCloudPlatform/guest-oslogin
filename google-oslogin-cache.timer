@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh the NSS cache
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=6h
+
+# No [Install] section - DefaultDependencies are enough.

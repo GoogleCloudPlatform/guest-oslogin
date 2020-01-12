@@ -29,7 +29,7 @@ Source0:        %{name}_%{version}.orig.tar.gz
 BuildRequires:  boost-devel
 BuildRequires:  gcc-c++
 BuildRequires:  make
-BuildRequires:  libcurl
+BuildRequires:  libcurl-devel
 BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
 %if 0%{?rhel} == 8
@@ -60,9 +60,9 @@ make %{?_smp_mflags} LDLIBS="-lcurl -ljson-c -lboost_regex"
 %install
 rm -rf %{buildroot}
 %if 0%{?rhel} == 6
-make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y INSTALL_CRON=y
+make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y INSTALL_CRON=y
 %else
-make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
+make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y
 %endif
 
 %files
@@ -89,8 +89,10 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
 %endif
 
 %post
+%if 0%{?rhel} != 6
 %systemd_post google-oslogin-cache.timer
 %systemd_post google-oslogin-cache.service
+%endif
 /sbin/ldconfig
 if [ $1 -gt 1 ]; then  # This is an upgrade.
   if semodule -l | grep -qi oslogin.el6; then
@@ -105,12 +107,16 @@ if [ -e /var/google-sudoers.d ]; then
 fi
 
 %preun
+%if 0%{?rhel} != 6
 %systemd_preun google-oslogin-cache.timer
 %systemd_preun google-oslogin-cache.service
+%endif
 
 %postun
+%if 0%{?rhel} != 6
 %systemd_postun google-oslogin-cache.timer
 %systemd_postun google-oslogin-cache.service
+%endif
 
 /sbin/ldconfig
 if [ $1 = 0 ]; then  # This is an uninstall.

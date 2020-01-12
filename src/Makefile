@@ -1,8 +1,6 @@
 SHELL = /bin/sh
 TOPDIR = $(realpath ..)
 
-VERSION = 20191018.00
-
 CPPFLAGS = -Iinclude -I/usr/include/json-c
 FLAGS = -fPIC -Wall -g
 CFLAGS = $(FLAGS) -Wstrict-prototypes
@@ -100,7 +98,7 @@ ifdef INSTALL_CRON
 else
 	# Cache refresh systemd timer
 	install -d $(DESTDIR)$(SYSTEMDDIR)
-	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.{service,timer}
+	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.timer $(TOPDIR)/google-oslogin-cache.service
 	install -d $(DESTDIR)$(PRESETDIR)
 	install -m 0644 -t $(DESTDIR)$(PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif

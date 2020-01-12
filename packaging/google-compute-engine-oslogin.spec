@@ -32,6 +32,13 @@ BuildRequires:  make
 BuildRequires:  libcurl-devel
 BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
+
+%if 0%{?rhel} == 6
+Requires: crontabs
+%else
+BuildRequires: systemd
+%endif
+
 %if 0%{?rhel} == 8
 BuildRequires:  python3-policycoreutils
 Requires:  python3-policycoreutils
@@ -39,11 +46,9 @@ Requires:  python3-policycoreutils
 BuildRequires:  policycoreutils-python
 Requires:  policycoreutils-python
 %endif
-Requires:  boost-regex
+
+Requires: boost-regex
 Requires: json-c
-%if 0%{?rhel} == 6
-Requires: crontabs
-%endif
 
 %description
 This package contains several libraries and changes to enable OS Login functionality
@@ -93,10 +98,15 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 %if 0%{?rhel} != 6
 if [ $1 -eq 1 ]; then
   # Initial installation
-  systemctl preset google-oslogin-cache.timer >/dev/null 2>&1 || :
-  systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
+  systemctl enable google-oslogin-cache.timer >/dev/null 2>&1 || :
+
+  if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || :
+    systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
+  fi
 fi
 %endif
+
 /sbin/ldconfig
 if [ $1 -gt 1 ]; then  # This is an upgrade.
   if semodule -l | grep -qi oslogin.el6; then
@@ -104,10 +114,11 @@ if [ $1 -gt 1 ]; then  # This is an upgrade.
     semodule -r oslogin.el6
   fi
 fi
+
 echo "Installing SELinux module for OS Login."
 semodule -i /usr/share/selinux/packages/oslogin.pp
 if [ -e /var/google-sudoers.d ]; then
-  fixfiles restore /var/google-sudoers.d
+  restorecon -r /var/google-sudoers.d
 fi
 
 %preun

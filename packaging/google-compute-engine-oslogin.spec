@@ -91,7 +91,11 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 
 %post
 %if 0%{?rhel} != 6
-%systemd_post google-oslogin-cache.timer
+if [ $1 -eq 1 ]; then
+  # Initial installation
+  systemctl preset google-oslogin-cache.timer >/dev/null 2>&1 || :
+  systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
+fi
 %endif
 /sbin/ldconfig
 if [ $1 -gt 1 ]; then  # This is an upgrade.

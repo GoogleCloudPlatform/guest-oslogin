@@ -29,9 +29,16 @@ Source0:        %{name}_%{version}.orig.tar.gz
 BuildRequires:  boost-devel
 BuildRequires:  gcc-c++
 BuildRequires:  make
-BuildRequires:  libcurl
+BuildRequires:  libcurl-devel
 BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
+
+%if 0%{?rhel} == 6
+Requires: crontabs
+%else
+BuildRequires: systemd
+%endif
+
 %if 0%{?rhel} == 8
 BuildRequires:  python3-policycoreutils
 Requires:  python3-policycoreutils
@@ -39,9 +46,9 @@ Requires:  python3-policycoreutils
 BuildRequires:  policycoreutils-python
 Requires:  policycoreutils-python
 %endif
-Requires:  boost-regex
+
+Requires: boost-regex
 Requires: json-c
-Requires: crontabs
 
 %description
 This package contains several libraries and changes to enable OS Login functionality
@@ -57,7 +64,11 @@ make %{?_smp_mflags} LDLIBS="-lcurl -ljson-c -lboost_regex"
 
 %install
 rm -rf %{buildroot}
-make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
+%if 0%{?rhel} == 6
+make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y INSTALL_CRON=y
+%else
+make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y
+%endif
 
 %files
 %doc
@@ -75,9 +86,27 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} INSTALL_SELINUX=y
 %{_mandir}/man8/libnss_oslogin.so.2.8.gz
 %{_mandir}/man8/nss-cache-oslogin.8.gz
 %{_mandir}/man8/libnss_cache_oslogin.so.2.8.gz
+%if 0%{?rhel} == 6
 %config(noreplace) /etc/cron.d/%{name}
+%else
+/lib/systemd/system/google-oslogin-cache.service
+/lib/systemd/system/google-oslogin-cache.timer
+/lib/systemd/system-preset/90-google-compute-engine-oslogin.preset
+%endif
 
 %post
+%if 0%{?rhel} != 6
+if [ $1 -eq 1 ]; then
+  # Initial installation
+  systemctl enable google-oslogin-cache.timer >/dev/null 2>&1 || :
+
+  if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || :
+    systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
+  fi
+fi
+%endif
+
 /sbin/ldconfig
 if [ $1 -gt 1 ]; then  # This is an upgrade.
   if semodule -l | grep -qi oslogin.el6; then
@@ -85,13 +114,23 @@ if [ $1 -gt 1 ]; then  # This is an upgrade.
     semodule -r oslogin.el6
   fi
 fi
+
 echo "Installing SELinux module for OS Login."
 semodule -i /usr/share/selinux/packages/oslogin.pp
 if [ -e /var/google-sudoers.d ]; then
-  fixfiles restore /var/google-sudoers.d
+  restorecon -r /var/google-sudoers.d
 fi
 
+%preun
+%if 0%{?rhel} != 6
+%systemd_preun google-oslogin-cache.timer
+%endif
+
 %postun
+%if 0%{?rhel} != 6
+%systemd_postun
+%endif
+
 /sbin/ldconfig
 if [ $1 = 0 ]; then  # This is an uninstall.
   if semodule -l|grep -qi oslogin; then
@@ -99,5 +138,6 @@ if [ $1 = 0 ]; then  # This is an uninstall.
     semodule -r oslogin
   fi
 fi
+
 
 %changelog

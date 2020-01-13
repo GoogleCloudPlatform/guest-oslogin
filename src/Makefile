@@ -1,8 +1,6 @@
 SHELL = /bin/sh
 TOPDIR = $(realpath ..)
 
-VERSION = 20191018.00
-
 CPPFLAGS = -Iinclude -I/usr/include/json-c
 FLAGS = -fPIC -Wall -g
 CFLAGS = $(FLAGS) -Wstrict-prototypes
@@ -20,6 +18,8 @@ BINDIR = $(PREFIX)/bin
 PAMDIR = $(LIBDIR)/security
 MANDIR = /usr/share/man
 CRONDIR = /etc/cron.d
+SYSTEMDDIR = /lib/systemd/system
+PRESETDIR = /lib/systemd/system-preset
 
 NSS_OSLOGIN_SONAME       = libnss_oslogin.so.2
 NSS_CACHE_OSLOGIN_SONAME = libnss_cache_oslogin.so.2
@@ -71,7 +71,6 @@ install: all
 	install -d $(DESTDIR)$(LIBDIR)
 	install -d $(DESTDIR)$(PAMDIR)
 	install -d $(DESTDIR)$(BINDIR)
-	install -d $(DESTDIR)$(CRONDIR)
 	install -d $(DESTDIR)$(MANDIR)/man8
 	# NSS modules
 	install -m 0644 -t $(DESTDIR)$(LIBDIR) $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN)
@@ -81,8 +80,6 @@ install: all
 	install -m 0644 -t $(DESTDIR)$(PAMDIR) $(PAM_ADMIN) $(PAM_LOGIN)
 	# Control file
 	install -m 0755 -t $(DESTDIR)$(BINDIR) $(BINARIES) $(TOPDIR)/google_oslogin_control
-	# Cache refresh cron
-	install -m 0644 $(TOPDIR)/cron.d $(DESTDIR)$(CRONDIR)/google-compute-engine-oslogin
 	# Manpages
 	install -m 0644 -t $(DESTDIR)$(MANDIR)/man8 $(TOPDIR)/man/nss-oslogin.8 $(TOPDIR)/man/nss-cache-oslogin.8
 	gzip -9 $(DESTDIR)$(MANDIR)/man8/nss-oslogin.8
@@ -90,6 +87,18 @@ install: all
 	ln -sf nss-oslogin.8.gz       $(DESTDIR)$(MANDIR)/man8/$(NSS_OSLOGIN_SONAME).8.gz
 	ln -sf nss-cache-oslogin.8.gz $(DESTDIR)$(MANDIR)/man8/$(NSS_CACHE_OSLOGIN_SONAME).8.gz
 ifdef INSTALL_SELINUX
+	# SELinux policy package
 	install -d $(DESTDIR)/usr/share/selinux/packages
 	install -m 0644 -t $(DESTDIR)/usr/share/selinux/packages $(TOPDIR)/selinux/oslogin.pp
+endif
+ifdef INSTALL_CRON
+	# Cache refresh cron
+	install -d $(DESTDIR)$(CRONDIR)
+	install -m 0644 $(TOPDIR)/cron.d $(DESTDIR)$(CRONDIR)/google-compute-engine-oslogin
+else
+	# Cache refresh systemd timer
+	install -d $(DESTDIR)$(SYSTEMDDIR)
+	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.timer $(TOPDIR)/google-oslogin-cache.service
+	install -d $(DESTDIR)$(PRESETDIR)
+	install -m 0644 -t $(DESTDIR)$(PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif

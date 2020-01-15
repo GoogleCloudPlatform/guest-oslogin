@@ -477,11 +477,13 @@ bool ParseJsonToGroup(const string& json, struct group* result, BufferManager* b
 
   json_object* gid;
   if (!json_object_object_get_ex(group, "gid", &gid)) {
+    *errnop = EINVAL;
     return false;
   }
 
   json_object* name;
   if (!json_object_object_get_ex(group, "name", &name)) {
+    *errnop = EINVAL;
     return false;
   }
 
@@ -569,7 +571,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
   // Locate the posixAccounts object.
   json_object* posix_accounts = NULL;
   if (!json_object_object_get_ex(root, "posixAccounts", &posix_accounts)) {
-    *errnop = ENOENT;
+    *errnop = EINVAL;
     return false;
   }
   if (json_object_get_type(posix_accounts) != json_type_array) {

@@ -48,6 +48,7 @@ static const uint64_t kNssPasswdCacheSize = 2048;
 static const uint64_t kPasswdBufferSize = 32768;
 
 int refreshpasswdcache() {
+  syslog(LOG_INFO, "Refreshing passwd entry cache");
   int error_code = 0;
   // Temporary buffer to hold passwd entries before writing.
   char buffer[kPasswdBufferSize];
@@ -57,9 +58,7 @@ int refreshpasswdcache() {
 
   std::ofstream cache_file(kDefaultBackupFilePath);
   if (cache_file.fail()) {
-    openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
     syslog(LOG_ERR, "Failed to open file %s.", kDefaultFilePath);
-    closelog();
     return -1;
   }
   chown(kDefaultFilePath, 0, 0);
@@ -70,7 +69,13 @@ int refreshpasswdcache() {
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
     BufferManager buffer_manager(buffer, kPasswdBufferSize);
     if (!nss_cache.NssGetpwentHelper(&buffer_manager, &pwd, &error_code)) {
-      break;
+      if (error_code == ERANGE) {
+        syslog(LOG_ERR, "Got passwd entry size out of range, skipping.");
+      } else if (error_code == EINVAL) {
+        syslog(LOG_ERR, "Got malformed passwd entry, skipping.");
+      } else {
+        syslog(LOG_ERR, "Unknown error while retrieving passwd entry, skipping.");
+      }
     }
     cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
                << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir
@@ -79,32 +84,22 @@ int refreshpasswdcache() {
   }
   cache_file.close();
 
-  // Check for errors.
-  if (error_code) {
-    openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
-    if (error_code == ERANGE) {
-      syslog(LOG_ERR, "Received unusually large passwd entry.");
-    } else if (error_code == EINVAL) {
-      syslog(LOG_ERR, "Encountered malformed passwd entry.");
-    } else {
-      syslog(LOG_ERR, "Unknown error while retrieving passwd entry.");
+  if (count > 0) {
+    if (rename(kDefaultBackupFilePath, kDefaultFilePath) != 0) {
+      syslog(LOG_ERR, "Could not move passwd cache file.");
+      remove(kDefaultBackupFilePath);
     }
-    closelog();
-    remove(kDefaultBackupFilePath);
-    return error_code;
-  }
-
-  if ((count > 0) && (rename(kDefaultBackupFilePath, kDefaultFilePath) != 0)) {
-    openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
-    syslog(LOG_ERR, "Could not move passwd cache file.");
-    closelog();
+  } else {
+    // count <= 0
+    syslog(LOG_ERR, "Produced empty passwd cache file, removing.");
     remove(kDefaultBackupFilePath);
   }
 
-  return error_code;
+  return 0;
 }
 
 int refreshgroupcache() {
+  syslog(LOG_INFO, "Refreshing group entry cache");
   int error_code = 0;
   // Temporary buffer to hold passwd entries before writing.
   char buffer[kPasswdBufferSize];
@@ -112,9 +107,7 @@ int refreshgroupcache() {
 
   std::ofstream cache_file(kDefaultBackupGroupPath);
   if (cache_file.fail()) {
-    openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
     syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupGroupPath);
-    closelog();
     return -1;
   }
   chown(kDefaultGroupPath, 0, 0);
@@ -126,13 +119,23 @@ int refreshgroupcache() {
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
     BufferManager buffer_manager(buffer, kPasswdBufferSize);
     if (!nss_cache.NssGetgrentHelper(&buffer_manager, &grp, &error_code)) {
-      break;
+      if (error_code == ERANGE) {
+        syslog(LOG_ERR, "Got group entry size out of range, skipping.");
+      } else if (error_code == EINVAL) {
+        syslog(LOG_ERR, "Got malformed group entry, skipping.");
+      } else {
+        syslog(LOG_ERR, "Unknown error while retrieving group entry, skipping.");
+      }
+      continue;
     }
     // TODO: instantiate these vars once or each time ?
     std::vector<string> users;
     std::string name(grp.gr_name);
     if (!GetUsersForGroup(name, &users, &error_code)) {
-      break;
+      syslog(LOG_ERR,
+             "Error getting users for group %s (error_code %d), skipping.",
+             grp.gr_name, error_code);
+      continue;
     }
     cache_file << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":" << users.front();
     users.erase(users.begin());
@@ -144,35 +147,22 @@ int refreshgroupcache() {
   }
   cache_file.close();
 
-  // Check for errors.
-  if (error_code) {
-    openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
-    if (error_code == ERANGE) {
-      syslog(LOG_ERR, "Received unusually large group entry.");
-    } else if (error_code == EINVAL) {
-      syslog(LOG_ERR, "Encountered malformed group entry.");
-    } else {
-      syslog(LOG_ERR, "Unknown error while retrieving group entry.");
-    }
-    closelog();
-    remove(kDefaultBackupGroupPath);
-    return error_code;
-  }
-
-  if ((count > 0) && (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0)) {
-    openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
+  // We don't care if this is a 0-length file because its presence matters for
+  // other functions.
+  if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
     syslog(LOG_ERR, "Could not move group cache file.");
-    closelog();
     remove(kDefaultBackupGroupPath);
   }
 
-  return error_code;
+  return 0;
 }
 
 int main() {
+  openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
   int u_res, g_res;
   u_res = refreshpasswdcache();
   g_res = refreshgroupcache();
+  closelog();
   if (u_res != 0)
     return u_res;
   return g_res;

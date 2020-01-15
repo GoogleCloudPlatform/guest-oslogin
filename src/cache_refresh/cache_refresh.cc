@@ -66,16 +66,21 @@ int refreshpasswdcache() {
 
   int count = 0;
   nss_cache.Reset();
+  BufferManager buffer_manager(buffer, kPasswdBufferSize);
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
-    BufferManager buffer_manager(buffer, kPasswdBufferSize);
     if (!nss_cache.NssGetpwentHelper(&buffer_manager, &pwd, &error_code)) {
       if (error_code == ERANGE) {
-        syslog(LOG_ERR, "Got passwd entry size out of range, skipping.");
+        syslog(LOG_ERR, "passwd entry size out of range, skipping");
       } else if (error_code == EINVAL) {
-        syslog(LOG_ERR, "Got malformed passwd entry, skipping.");
+        syslog(LOG_ERR, "Malformed passwd entry, skipping");
       } else {
-        syslog(LOG_ERR, "Unknown error while retrieving passwd entry, skipping.");
+        syslog(LOG_ERR, "Failure getting users, quitting");
+        // Prevent this partially-generated cache file from overwriting a
+        // potentially complete cache file.
+        count = 0;
+        break;
       }
+      continue;
     }
     cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
                << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir
@@ -116,20 +121,30 @@ int refreshgroupcache() {
   struct group grp;
   int count = 0;
   nss_cache.Reset();
+  BufferManager buffer_manager(buffer, kPasswdBufferSize);
+  std::vector<string> users;
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
-    BufferManager buffer_manager(buffer, kPasswdBufferSize);
     if (!nss_cache.NssGetgrentHelper(&buffer_manager, &grp, &error_code)) {
       if (error_code == ERANGE) {
-        syslog(LOG_ERR, "Got group entry size out of range, skipping.");
+        syslog(LOG_ERR, "Group entry size out of range, skipping");
       } else if (error_code == EINVAL) {
-        syslog(LOG_ERR, "Got malformed group entry, skipping.");
+        syslog(LOG_ERR, "Malformed group entry, skipping");
+      } else if (error_code == ENOENT) {
+        syslog(LOG_ERR, "Failure getting groups, quitting");
+        // Prevent this partially-generated cache file from overwriting a
+        // potentially complete cache file.
+        count = 0;
+        break;
+      } else if (error_code == ENODATA) {
+        // Should not happen, but means no more users.
+        break;
       } else {
-        syslog(LOG_ERR, "Unknown error while retrieving group entry, skipping.");
+        syslog(LOG_ERR, "Unknown error while retrieving group entry, quitting.");
+        count = 0;
+        break;
       }
       continue;
     }
-    // TODO: instantiate these vars once or each time ?
-    std::vector<string> users;
     std::string name(grp.gr_name);
     if (!GetUsersForGroup(name, &users, &error_code)) {
       syslog(LOG_ERR,

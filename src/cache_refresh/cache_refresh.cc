@@ -58,25 +58,23 @@ int refreshpasswdcache() {
 
   std::ofstream cache_file(kDefaultBackupFilePath);
   if (cache_file.fail()) {
-    syslog(LOG_ERR, "Failed to open file %s.", kDefaultFilePath);
+    syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupFilePath);
     return -1;
   }
-  chown(kDefaultFilePath, 0, 0);
-  chmod(kDefaultFilePath, S_IRUSR | S_IWUSR | S_IROTH);
+  chown(kDefaultBackupFilePath, 0, 0);
+  chmod(kDefaultBackupFilePath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   int count = 0;
   nss_cache.Reset();
-  BufferManager buffer_manager(buffer, kPasswdBufferSize);
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
+    BufferManager buffer_manager(buffer, kPasswdBufferSize);
     if (!nss_cache.NssGetpwentHelper(&buffer_manager, &pwd, &error_code)) {
       if (error_code == ERANGE) {
         syslog(LOG_ERR, "passwd entry size out of range, skipping");
       } else if (error_code == EINVAL) {
         syslog(LOG_ERR, "Malformed passwd entry, skipping");
-      } else {
+      } else if (error_code == ENOENT) {
         syslog(LOG_ERR, "Failure getting users, quitting");
-        // Prevent this partially-generated cache file from overwriting a
-        // potentially complete cache file.
         count = 0;
         break;
       }
@@ -96,7 +94,7 @@ int refreshpasswdcache() {
     }
   } else {
     // count <= 0
-    syslog(LOG_ERR, "Produced empty passwd cache file, removing.");
+    syslog(LOG_ERR, "Produced empty passwd cache file, removing %s.", kDefaultBackupFilePath);
     remove(kDefaultBackupFilePath);
   }
 
@@ -115,15 +113,15 @@ int refreshgroupcache() {
     syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupGroupPath);
     return -1;
   }
-  chown(kDefaultGroupPath, 0, 0);
-  chmod(kDefaultGroupPath, S_IRUSR | S_IWUSR | S_IROTH);
+  chown(kDefaultBackupGroupPath, 0, 0);
+  chmod(kDefaultBackupGroupPath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   struct group grp;
   int count = 0;
   nss_cache.Reset();
-  BufferManager buffer_manager(buffer, kPasswdBufferSize);
   std::vector<string> users;
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
+    BufferManager buffer_manager(buffer, kPasswdBufferSize);
     if (!nss_cache.NssGetgrentHelper(&buffer_manager, &grp, &error_code)) {
       if (error_code == ERANGE) {
         syslog(LOG_ERR, "Group entry size out of range, skipping");
@@ -131,15 +129,6 @@ int refreshgroupcache() {
         syslog(LOG_ERR, "Malformed group entry, skipping");
       } else if (error_code == ENOENT) {
         syslog(LOG_ERR, "Failure getting groups, quitting");
-        // Prevent this partially-generated cache file from overwriting a
-        // potentially complete cache file.
-        count = 0;
-        break;
-      } else if (error_code == ENODATA) {
-        // Should not happen, but means no more users.
-        break;
-      } else {
-        syslog(LOG_ERR, "Unknown error while retrieving group entry, quitting.");
         count = 0;
         break;
       }
@@ -162,10 +151,14 @@ int refreshgroupcache() {
   }
   cache_file.close();
 
-  // We don't care if this is a 0-length file because its presence matters for
-  // other functions.
-  if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
-    syslog(LOG_ERR, "Could not move group cache file.");
+  if (count > 0) {
+    if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
+      syslog(LOG_ERR, "Could not move group cache file.");
+      remove(kDefaultBackupGroupPath);
+    }
+  } else {
+    // count <= 0
+    syslog(LOG_ERR, "Produced empty group cache file, removing %s.", kDefaultBackupGroupPath);
     remove(kDefaultBackupGroupPath);
   }
 
@@ -173,7 +166,7 @@ int refreshgroupcache() {
 }
 
 int main() {
-  openlog("oslogin_cache_refresh", LOG_PID, LOG_USER);
+  openlog("oslogin_cache_refresh", LOG_PID|LOG_PERROR, LOG_USER);
   int u_res, g_res;
   u_res = refreshpasswdcache();
   g_res = refreshgroupcache();

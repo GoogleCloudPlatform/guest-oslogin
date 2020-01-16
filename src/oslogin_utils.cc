@@ -138,6 +138,7 @@ bool NssCache::LoadJsonUsersToCache(string response) {
   // A page_token of 0 means we are done. This response will not contain any
   // login profiles.
   if (page_token_ == "0") {
+    page_token_ = "";
     on_last_page_ = true;
     return true;
   }
@@ -172,20 +173,17 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
   if (json_object_object_get_ex(root, "nextPageToken", &page_token_object)) {
     page_token_ = json_object_get_string(page_token_object);
   } else {
-    // If the page token is not found, assume something went wrong.
-    page_token_ = "";
-    on_last_page_ = true;
     return false;
   }
   // A page_token of 0 means we are done. This response will contain the last
   // page of groups.
   if (page_token_ == "0") {
-    page_token_ = "";
     on_last_page_ = true;
+    page_token_ = "";
+    return true;
   }
   json_object* groups = NULL;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
-    page_token_ = "";
     return false;
   }
   if (json_object_get_type(groups) != json_type_array) {
@@ -193,7 +191,6 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
   }
   int arraylen = json_object_array_length(groups);
   if (arraylen == 0 || arraylen > cache_size_) {
-    page_token_ = "";
     return false;
   }
   for (int i = 0; i < arraylen; i++) {
@@ -227,7 +224,7 @@ bool NssCache::NssGetpwentHelper(BufferManager* buf, struct passwd* result, int*
       return false;
     }
   }
-  return GetNextPasswd(buf, result, errnop);
+  return (HasNextEntry() && GetNextPasswd(buf, result, errnop));
 }
 
 // Gets the next entry from the cache, refreshing as needed. Returns true if a
@@ -255,9 +252,10 @@ bool NssCache::NssGetgrentHelper(BufferManager* buf, struct group* result, int* 
     }
   }
 
-  if (!GetNextGroup(buf, result, errnop)) {
+  if (!HasNextEntry() || !GetNextGroup(buf, result, errnop)) {
     return false;
   }
+
   std::vector<string> users;
   std::string name(result->gr_name);
   if (!GetUsersForGroup(name, &users, errnop)) {
@@ -578,6 +576,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
 
   // Iterate through the json response and populate the passwd struct.
   if (json_object_get_type(posix_accounts) != json_type_object) {
+    *errnop = EINVAL;
     return false;
   }
   json_object_object_foreach(posix_accounts, key, val) {

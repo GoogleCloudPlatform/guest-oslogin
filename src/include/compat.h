@@ -40,7 +40,6 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #define OSLOGIN_PASSWD_CACHE_PATH "/usr/local/etc/oslogin_passwd.cache"
 #define OSLOGIN_GROUP_CACHE_PATH "/usr/local/etc/oslogin_group.cache"
-#define PASSWD_PATH "/usr/local/etc/passwd"
 
 #define K_DEFAULT_PFILE_PATH "/usr/local/etc/oslogin_passwd.cache"
 #define K_DEFAULT_BACKUP_PFILE_PATH "/usr/local/etc/oslogin_passwd.cache.bak"
@@ -56,7 +55,6 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #define OSLOGIN_PASSWD_CACHE_PATH "/etc/oslogin_passwd.cache"
 #define OSLOGIN_GROUP_CACHE_PATH "/etc/oslogin_group.cache"
-#define PASSWD_PATH "/etc/passwd"
 
 #define K_DEFAULT_PFILE_PATH "/etc/oslogin_passwd.cache"
 #define K_DEFAULT_BACKUP_PFILE_PATH "/etc/oslogin_passwd.cache.bak"

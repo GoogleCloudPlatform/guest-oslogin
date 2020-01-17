@@ -150,7 +150,7 @@ TEST(NssCacheTest, TestLoadJsonFinalResponse) {
   NssCache nss_cache(2);
   string response = "{\"nextPageToken\": \"0\"}";
 
-  ASSERT_FALSE(nss_cache.LoadJsonUsersToCache(response));
+  ASSERT_TRUE(nss_cache.LoadJsonUsersToCache(response));
   ASSERT_EQ(nss_cache.GetPageToken(), "");
 
   size_t buflen = 500;

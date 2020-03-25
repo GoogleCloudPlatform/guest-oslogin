@@ -224,10 +224,14 @@ enum nss_status _nss_oslogin_initgroups_dyn(const char *user, gid_t skipgroup,
   FILE *p_file = fopen(PASSWD_PATH, "r");
   if (p_file == NULL)
     return NSS_STATUS_NOTFOUND;
+
   struct passwd *userp;
-  while ((userp = fgetpwent(p_file)) != NULL)
-    if (strcmp(userp->pw_name, user) == 0)
+  while ((userp = fgetpwent(p_file)) != NULL) {
+    if (strcmp(userp->pw_name, user) == 0) {
+      fclose(p_file);
       return NSS_STATUS_NOTFOUND;
+    }
+  }
   fclose(p_file);
 
   std::vector<Group> grouplist;

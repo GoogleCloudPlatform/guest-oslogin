@@ -221,7 +221,7 @@ enum nss_status _nss_oslogin_initgroups_dyn(const char *user, gid_t skipgroup,
                                             gid_t **groupsp, long int limit,
                                             int *errnop) {
   // check if user exists in local passwd DB
-  FILE *p_file = fopen(PASSWD_PATH, "r");
+  FILE *p_file = fopen(PASSWD_PATH, "re");
   if (p_file == NULL)
     return NSS_STATUS_NOTFOUND;
 

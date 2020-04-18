@@ -18,8 +18,8 @@ BINDIR = $(PREFIX)/bin
 PAMDIR = $(LIBDIR)/security
 MANDIR = /usr/share/man
 CRONDIR = /etc/cron.d
-SYSTEMDDIR = /lib/systemd/system
-PRESETDIR = /lib/systemd/system-preset
+SYSTEMDDIR = $(LIBDIR)/systemd/system
+PRESETDIR = $(LIBDIR)/systemd/system-preset
 
 NSS_OSLOGIN_SONAME       = libnss_oslogin.so.2
 NSS_CACHE_OSLOGIN_SONAME = libnss_cache_oslogin.so.2

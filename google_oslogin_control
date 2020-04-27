@@ -265,7 +265,7 @@ modify_group_conf() {
   fi
 
   local group_config="${1:-${group_config}}"
-  local group_conf_entry="sshd;*;*;Al0000-2400;adm,dip,docker,lxd,plugdev,video"
+  local group_conf_entry="sshd;*;*;Al0000-2400;dip,plugdev,video"
 
   if ! grep -q "$group_conf_entry" "$group_config"; then
     $sed -i"" "\$a ${added_comment}\n${group_conf_entry}" "$group_config"

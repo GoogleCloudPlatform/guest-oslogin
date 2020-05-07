@@ -175,12 +175,11 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
   } else {
     return false;
   }
-  // A page_token of 0 means we are done. This response will contain the last
-  // page of groups.
+  // A page_token of 0 for groups is different than for users. This is the last
+  // page, but it WILL contain groups.
   if (page_token_ == "0") {
     on_last_page_ = true;
     page_token_ = "";
-    return true;
   }
   json_object* groups = NULL;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {

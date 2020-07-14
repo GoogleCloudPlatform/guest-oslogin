@@ -188,6 +188,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
   user_prompts[INTERNAL_TWO_FACTOR] = "Security code from security key";
   user_prompts[IDV_PREREGISTERED_PHONE] =
       "Voice or text message verification code";
+  user_prompts[SECURITY_KEY_OTP] = "Security code from a security key";
 
   oslogin_utils::Challenge challenge;
   if (challenges.size() > 1) {
@@ -230,6 +231,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
   if (challenge.type == INTERNAL_TWO_FACTOR) {
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
                    "Enter your security code: ") != PAM_SUCCESS) {
+      pam_error(pamh, "Unable to get user input");
+    }
+  } else if (challenge.type == SECURITY_KEY_OTP) {
+    if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
+                   "Enter your security code by visiting g.co/sc: ") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
     }
   } else if (challenge.type == TOTP) {

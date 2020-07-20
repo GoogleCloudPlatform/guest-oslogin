@@ -203,14 +203,17 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &choice, "%s",
                    prompt.str().c_str()) != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
+      return PAM_PERM_DENIED;
     }
 
     int choicei;
-    if (sscanf(choice, "%d", &choicei) == EOF) {
-      pam_error(pamh, "Unable to get user input");
+    if (sscanf(choice, "%d", &choicei) != 1) {
+      pam_error(pamh, "Error parsing user input");
+      return PAM_PERM_DENIED;
     }
-    if (size_t(choicei) > challenges.size()) {
+    if (size_t(choicei) > challenges.size() || choicei <= 0) {
       pam_error(pamh, "Invalid option");
+      return PAM_PERM_DENIED;
     }
     challenge = challenges[choicei - 1];
   } else {
@@ -232,28 +235,33 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
                    "Enter your security code: ") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
+      return PAM_PERM_DENIED;
     }
   } else if (challenge.type == SECURITY_KEY_OTP) {
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
                    "Enter your security code by visiting g.co/sc: ") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
+      return PAM_PERM_DENIED;
     }
   } else if (challenge.type == TOTP) {
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
                    "Enter your one-time password: ") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
+      return PAM_PERM_DENIED;
     }
   } else if (challenge.type == AUTHZEN) {
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
                    "A login prompt has been sent to your enrolled device. "
                    "Press enter to continue") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
+      return PAM_PERM_DENIED;
     }
   } else if (challenge.type == IDV_PREREGISTERED_PHONE) {
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
                    "A security code has been sent to your phone. "
                    "Enter code to continue: ") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
+      return PAM_PERM_DENIED;
     }
   } else {
     PAM_SYSLOG(pamh, LOG_ERR, "Unsupported challenge type %s",

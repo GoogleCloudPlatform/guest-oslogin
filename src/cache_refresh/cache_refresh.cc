@@ -82,7 +82,7 @@ int refreshpasswdcache() {
       continue;
     }
     if (strlen(pwd.pw_passwd) == 0) {
-      pwd.pw_passwd = (char *)"!";
+      pwd.pw_passwd = (char *)"*";
     }
     cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
                << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir

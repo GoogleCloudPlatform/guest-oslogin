@@ -49,6 +49,7 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #define PAM_SYSLOG(pamh, ...) syslog(__VA_ARGS__)
 #define DEFAULT_SHELL "/bin/sh"
+#define DEFAULT_PASSWD "!"
 
 #else /* __FreeBSD__ */
 
@@ -65,6 +66,7 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #define PAM_SYSLOG pam_syslog
 #define DEFAULT_SHELL "/bin/bash"
+#define DEFAULT_PASSWD "!"
 
 #define DECLARE_NSS_METHOD_TABLE(name, ...)
 #define NSS_METHOD_PROTOTYPE(m)

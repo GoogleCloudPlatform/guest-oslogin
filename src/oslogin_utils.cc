@@ -373,13 +373,14 @@ bool ValidatePasswd(struct passwd* result, BufferManager* buf, int* errnop) {
       return false;
     }
   }
-
-  // OS Login does not utilize the passwd field and reserves the gecos field.
-  // Set these to be empty.
-  if (!buf->AppendString("", &result->pw_gecos, errnop)) {
-    return false;
+  if (strlen(result->pw_passwd) == 0) {
+    if (!buf->AppendString(DEFAULT_PASSWD, &result->pw_passwd, errnop)) {
+      return false;
+    }
   }
-  if (!buf->AppendString("", &result->pw_passwd, errnop)) {
+
+  // OS Login reserves the GECOS field.
+  if (!buf->AppendString("", &result->pw_gecos, errnop)) {
     return false;
   }
   return true;
@@ -572,6 +573,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
   result->pw_shell = (char*)"";
   result->pw_name = (char*)"";
   result->pw_dir = (char*)"";
+  result->pw_passwd = (char*)"";
 
   // Iterate through the json response and populate the passwd struct.
   if (json_object_get_type(posix_accounts) != json_type_object) {

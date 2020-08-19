@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2020 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
   }
 
   if (status == "NO_AVAILABLE_CHALLENGES") {
-    return PAM_SUCCESS; // User is not two-factor enabled.
+    return PAM_PERM_DENIED; // User is not two-factor enabled, deny login.
   }
 
   std::string session_id;

@@ -45,17 +45,17 @@
 
 #define LEN(index) ((fields[index+1] - fields[index]) - 1)
 
-#define COPYINT(index, result) \
+#define COPYINT(index, inner_result) \
     do { \
-      memset(buffer,0,buflen); \
-      memcpy(buffer,&str[fields[index]],LEN(index)); \
+      memset(buffer, 0, buflen); \
+      memcpy(buffer, &str[fields[index]], LEN(index)); \
       buffer[LEN(index)+1] = '\0'; \
-      result = atoi(buffer); \
+      inner_result = atoi(buffer); \
     } while(0)
 
-#define COPYSTR(index, result) \
+#define COPYSTR(index, inner_result) \
     do { \
-      result = buffer; \
+      inner_result = buffer; \
       memcpy(buffer, &str[fields[index]], LEN(index)); \
       buffer[LEN(index)+1] = '\0'; \
       buffer += LEN(index)+1; \

@@ -43,6 +43,11 @@
 #define GR_MEM 3
 #define GR_END 4
 
+#define SOCK_PATH "/var/run/oslogin"
+
+#define BUFSIZE 1024
+#define MAXBUFSIZE 32768
+
 #define LEN(index) ((fields[index+1] - fields[index]) - 1)
 
 #define COPYINT(index, inner_result) \
@@ -60,6 +65,11 @@
       buffer[LEN(index)+1] = '\0'; \
       buffer += LEN(index)+1; \
     } while(0)
+
+#define MIN(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
 
 #define DEBUGF(...) \
     do { \
@@ -156,4 +166,77 @@ int parsegroup(char *str, struct group *result, char *buffer, size_t buflen) {
   *bufp = NULL;
 
   return 0;
+}
+
+struct Buffer {
+  ssize_t buflen; // how much data we read into the buffer
+  ssize_t bufsize; // allocated space for buffer
+  char *buf;  // the buffer we copy results into
+  int socket;
+};
+
+struct Buffer pwbuf;
+struct Buffer grbuf;
+
+int dial(struct Buffer *buf) {
+  if (buf->socket != 0) {
+    return 0;
+  }
+  if ((buf->socket = socket(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, 0)) == -1) {
+    return -1;
+  }
+
+  int len;
+  struct sockaddr_un remote;
+  remote.sun_family = AF_UNIX;
+  strcpy(remote.sun_path, SOCK_PATH);
+  len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+  if (connect(buf->socket, (struct sockaddr *)&remote, len) == -1) {
+      return -1;
+  }
+
+  return 0;
+}
+
+int recvline(struct Buffer *buffer) {
+  int res = 0;
+  ssize_t recvlen, new_size = 0;
+  fd_set fds;
+  struct timeval tmout = {2,0};
+
+
+  // TODO: catch malloc errors
+  char *recvbuf = (char *)malloc(BUFSIZE);
+
+  while(1) {
+    FD_ZERO(&fds);
+    FD_SET(buffer->socket, &fds);
+    res = select(buffer->socket+1, &fds, NULL, NULL, &tmout);
+    if (res <= 0 || !(FD_ISSET(buffer->socket, &fds))) {
+      return -1;
+    }
+    if ((recvlen = recv(buffer->socket, recvbuf, BUFSIZE, 0)) <= 0) {
+      return -1;
+    }
+
+    // Determine if buffer needs resizing.
+    if ((buffer->buflen + recvlen) > buffer->bufsize) {
+      new_size = MIN((buffer->bufsize * 2), MAXBUFSIZE);
+      if (new_size == buffer->bufsize) {
+        // We were already at limit!
+        return -1;
+      }
+      if (realloc(buffer->buf, new_size) == NULL) {
+        return -1;
+      }
+      buffer->bufsize = new_size;
+    }
+
+    memcpy(&(buffer->buf[buffer->buflen]), recvbuf, recvlen);
+    buffer->buflen += recvlen;
+
+    if (recvbuf[recvlen - 1] == '\n') {
+      return buffer->buflen;
+    }
+  }
 }

@@ -29,7 +29,7 @@ new_tests : new_test_runner $(TOPDIR)/src/nss/new_nss_oslogin.c
 
 non_network_tests : test_runner new_test_runner
 	$(TEST_RUNNER) --gtest_filter=*-FindGroupTest.*:GetUsersForGroupTest.*
-	$(NEW_TEST_RUNNER) ${GTESTARGS}
+	$(NEW_TEST_RUNNER) --gtest_filter=ParserTest.*
 
 network_tests : test_runner ping reset
 	$(TEST_RUNNER) --gtest_filter=FindGroupTest.*:GetUsersForGroupTest.*

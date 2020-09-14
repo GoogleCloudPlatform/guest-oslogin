@@ -178,11 +178,11 @@ struct Buffer {
 struct Buffer pwbuf;
 struct Buffer grbuf;
 
-int dial(struct Buffer *buf) {
-  if (buf->socket != 0) {
+int dial(struct Buffer *const buffer) {
+  if (buffer->socket != 0) {
     return 0;
   }
-  if ((buf->socket = socket(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, 0)) == -1) {
+  if ((buffer->socket = socket(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, 0)) == -1) {
     return -1;
   }
 
@@ -191,19 +191,18 @@ int dial(struct Buffer *buf) {
   remote.sun_family = AF_UNIX;
   strcpy(remote.sun_path, SOCK_PATH);
   len = strlen(remote.sun_path) + sizeof(remote.sun_family);
-  if (connect(buf->socket, (struct sockaddr *)&remote, len) == -1) {
+  if (connect(buffer->socket, (struct sockaddr *)&remote, len) == -1) {
       return -1;
   }
 
   return 0;
 }
 
-int recvline(struct Buffer *buffer) {
+int recvline(struct Buffer *const buffer) {
   int res = 0;
   ssize_t recvlen, new_size = 0;
   fd_set fds;
   struct timeval tmout = {2,0};
-
 
   // TODO: catch malloc errors
   char *recvbuf = (char *)malloc(BUFSIZE);
@@ -239,4 +238,6 @@ int recvline(struct Buffer *buffer) {
       return buffer->buflen;
     }
   }
+
+  return -1;  // Unreachable code.
 }

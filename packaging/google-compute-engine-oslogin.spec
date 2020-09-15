@@ -32,6 +32,7 @@ BuildRequires:  make
 BuildRequires:  libcurl-devel
 BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
+BuildRequires:  policycoreutils
 
 %if 0%{?rhel} == 6
 Requires: crontabs
@@ -39,16 +40,9 @@ Requires: crontabs
 BuildRequires: systemd
 %endif
 
-%if 0%{?rhel} == 8
-BuildRequires:  python3-policycoreutils
-Requires:  python3-policycoreutils
-%else
-BuildRequires:  policycoreutils-python
-Requires:  policycoreutils-python
-%endif
-
 Requires: boost-regex
 Requires: json-c
+Requires: policycoreutils
 
 %description
 This package contains several libraries and changes to enable OS Login functionality

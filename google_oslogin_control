@@ -145,7 +145,7 @@ modify_pam_config() (
   local pam_account_oslogin="account    [success=ok default=ignore] pam_oslogin_admin.so"
   local pam_account_admin="account    [success=ok ignore=ignore default=die] pam_oslogin_login.so"
   local pam_session_homedir="session    [success=ok default=ignore] pam_mkhomedir.so"
-  local pam_account_su="account    [success=bad ignore=ignore] pam_oslogin_login.so"
+  local pam_account_su="account    \[success=bad ignore=ignore\] pam_oslogin_login\.so"
 
   # In FreeBSD, the used flags are not supported, replacing them with the
   # previous ones (requisite and optional). This is not an exact feature parity
@@ -267,7 +267,7 @@ modify_group_conf() {
   fi
 
   local group_config="${1:-${group_config}}"
-  local group_conf_entry="sshd;*;*;Al0000-2400;video"
+  local group_conf_entry="sshd;\*;\*;Al0000-2400;video"
 
   if ! grep -Fq "$group_conf_entry" "$group_config"; then
     $sed -i"" "\$a ${added_comment}\n${group_conf_entry}" "$group_config"

@@ -212,9 +212,11 @@ int recvline(struct Buffer *const buffer) {
     FD_SET(buffer->socket, &fds);
     res = select(buffer->socket+1, &fds, NULL, NULL, &tmout);
     if (res <= 0 || !(FD_ISSET(buffer->socket, &fds))) {
+      free(recvbuf);
       return -1;
     }
     if ((recvlen = recv(buffer->socket, recvbuf, BUFSIZE, 0)) <= 0) {
+      free(recvbuf);
       return -1;
     }
 
@@ -223,9 +225,11 @@ int recvline(struct Buffer *const buffer) {
       new_size = MIN((buffer->bufsize * 2), MAXBUFSIZE);
       if (new_size == buffer->bufsize) {
         // We were already at limit!
+        free(recvbuf);
         return -1;
       }
       if (realloc(buffer->buf, new_size) == NULL) {
+        free(recvbuf);
         return -1;
       }
       buffer->bufsize = new_size;
@@ -235,10 +239,12 @@ int recvline(struct Buffer *const buffer) {
     buffer->buflen += recvlen;
 
     if (recvbuf[recvlen - 1] == '\n') {
+      free(recvbuf);
       return buffer->buflen;
     }
   }
 
+  free(recvbuf);
   return -1;  // Unreachable code.
 }
 
@@ -250,8 +256,6 @@ _nss_oslogin_getpwnam_r(const char *name, struct passwd *result, char *buffer,
   memset(&mgr, 0, sizeof(struct Buffer));
 
   *errnop = 0;
-  mgr.bufsize = BUFSIZE;
-  mgr.buf = (char *)malloc(BUFSIZE);
 
   if (dial(&mgr) != 0) {
     return NSS_STATUS_NOTFOUND;
@@ -265,16 +269,20 @@ _nss_oslogin_getpwnam_r(const char *name, struct passwd *result, char *buffer,
     return NSS_STATUS_NOTFOUND;
   }
 
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
   if ((recvline(&mgr)) < 0) {
     free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
   if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
-  res = parsepasswd(mgr.buf,result,buffer,buflen);
+  res = parsepasswd(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
   if (res == 0) {
     return NSS_STATUS_SUCCESS;
   }
@@ -293,8 +301,6 @@ _nss_oslogin_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
   memset(&mgr, 0, sizeof(struct Buffer));
 
   *errnop = 0;
-  mgr.bufsize = BUFSIZE;
-  mgr.buf = (char *)malloc(BUFSIZE);
 
   if (dial(&mgr) != 0) {
     return NSS_STATUS_NOTFOUND;
@@ -308,16 +314,20 @@ _nss_oslogin_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
       return NSS_STATUS_NOTFOUND;
   }
 
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
   if ((recvline(&mgr)) < 0) {
     free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
   if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
-  res = parsepasswd(mgr.buf,result,buffer,buflen);
+  res = parsepasswd(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
   if (res == 0) {
     return NSS_STATUS_SUCCESS;
   }
@@ -334,10 +344,7 @@ _nss_oslogin_getgrnam_r(const char *name, struct group *result, char *buffer,
   int res;
   struct Buffer mgr;
   memset(&mgr, 0, sizeof(struct Buffer));
-
   *errnop = 0;
-  mgr.bufsize = BUFSIZE;
-  mgr.buf = (char *)malloc(BUFSIZE);
 
   if (dial(&mgr) != 0) {
     return NSS_STATUS_NOTFOUND;
@@ -351,16 +358,20 @@ _nss_oslogin_getgrnam_r(const char *name, struct group *result, char *buffer,
       return NSS_STATUS_NOTFOUND;
   }
 
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
   if ((recvline(&mgr)) < 0) {
     free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
   if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
-  res = parsegroup(mgr.buf,result,buffer,buflen);
+  res = parsegroup(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
   if (res == 0) {
     return NSS_STATUS_SUCCESS;
   }
@@ -379,8 +390,6 @@ _nss_oslogin_getgrgid_r(gid_t gid, struct group *result, char *buffer,
   memset(&mgr, 0, sizeof(struct Buffer));
 
   *errnop = 0;
-  mgr.bufsize = BUFSIZE;
-  mgr.buf = (char *)malloc(BUFSIZE);
 
   if (dial(&mgr) != 0) {
     return NSS_STATUS_NOTFOUND;
@@ -393,16 +402,20 @@ _nss_oslogin_getgrgid_r(gid_t gid, struct group *result, char *buffer,
       return NSS_STATUS_NOTFOUND;
   }
 
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
   if ((recvline(&mgr)) < 0) {
     free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
   if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
     return NSS_STATUS_NOTFOUND;
   }
 
-  res = parsegroup(mgr.buf,result,buffer,buflen);
+  res = parsegroup(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
   if (res == 0) {
     return NSS_STATUS_SUCCESS;
   }

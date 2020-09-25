@@ -27,6 +27,7 @@
 
 
 #define MAX_GR_MEM 100
+#define MAX_ARGLEN 100
 
 #define PW_NAME 0
 #define PW_PASSWD 1
@@ -212,9 +213,11 @@ int recvline(struct Buffer *const buffer) {
     FD_SET(buffer->socket, &fds);
     res = select(buffer->socket+1, &fds, NULL, NULL, &tmout);
     if (res <= 0 || !(FD_ISSET(buffer->socket, &fds))) {
+      free(recvbuf);
       return -1;
     }
     if ((recvlen = recv(buffer->socket, recvbuf, BUFSIZE, 0)) <= 0) {
+      free(recvbuf);
       return -1;
     }
 
@@ -223,9 +226,11 @@ int recvline(struct Buffer *const buffer) {
       new_size = MIN((buffer->bufsize * 2), MAXBUFSIZE);
       if (new_size == buffer->bufsize) {
         // We were already at limit!
+        free(recvbuf);
         return -1;
       }
       if (realloc(buffer->buf, new_size) == NULL) {
+        free(recvbuf);
         return -1;
       }
       buffer->bufsize = new_size;
@@ -235,9 +240,193 @@ int recvline(struct Buffer *const buffer) {
     buffer->buflen += recvlen;
 
     if (recvbuf[recvlen - 1] == '\n') {
+      free(recvbuf);
       return buffer->buflen;
     }
   }
 
+  free(recvbuf);
   return -1;  // Unreachable code.
+}
+
+static enum nss_status
+_nss_oslogin_getpwnam_r(const char *name, struct passwd *result, char *buffer,
+                        size_t buflen, int *errnop) {
+  int res;
+  struct Buffer mgr;
+  memset(&mgr, 0, sizeof(struct Buffer));
+
+  *errnop = 0;
+
+  if (dial(&mgr) != 0) {
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  // send the verb GETPWNAM with the argument <name>
+  // TODO: validate incoming length of 'name' fits in 100 char
+  char str[MAX_ARGLEN];
+  sprintf(str, "GETPWNAM %s\n", name);
+  if ((res = send(mgr.socket, str, strlen(str), 0)) == -1) {
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
+  if ((recvline(&mgr)) < 0) {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  res = parsepasswd(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
+  if (res == 0) {
+    return NSS_STATUS_SUCCESS;
+  }
+  *errnop = res;
+  if (res == ERANGE) {
+    return NSS_STATUS_TRYAGAIN;
+  }
+  return NSS_STATUS_NOTFOUND;
+}
+
+static enum nss_status
+_nss_oslogin_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
+                        size_t buflen, int *errnop) {
+  int res;
+  struct Buffer mgr;
+  memset(&mgr, 0, sizeof(struct Buffer));
+
+  *errnop = 0;
+
+  if (dial(&mgr) != 0) {
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  // send the verb GETPWUID with the argument <uid>
+  // TODO: validate incoming length of 'uid' fits in 100 char
+  char str[MAX_ARGLEN];
+  sprintf(str, "GETPWUID %d\n", uid);
+  if (send(mgr.socket, str, strlen(str), 0) == -1) {
+      return NSS_STATUS_NOTFOUND;
+  }
+
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
+  if ((recvline(&mgr)) < 0) {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  res = parsepasswd(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
+  if (res == 0) {
+    return NSS_STATUS_SUCCESS;
+  }
+  *errnop = res;
+  if (res == ERANGE) {
+    return NSS_STATUS_TRYAGAIN;
+  }
+  return NSS_STATUS_NOTFOUND;
+}
+
+static enum nss_status
+_nss_oslogin_getgrnam_r(const char *name, struct group *result, char *buffer,
+                        size_t buflen, int *errnop) {
+  int res;
+  struct Buffer mgr;
+  memset(&mgr, 0, sizeof(struct Buffer));
+  *errnop = 0;
+
+  if (dial(&mgr) != 0) {
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  // send the verb GETPWNAM with the argument <name>
+  // TODO: validate incoming length of 'name' fits in 100 char
+  char str[MAX_ARGLEN];
+  sprintf(str, "GETGRNAM %s\n", name);
+  if (send(mgr.socket, str, strlen(str), 0) == -1) {
+      return NSS_STATUS_NOTFOUND;
+  }
+
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
+  if ((recvline(&mgr)) < 0) {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  res = parsegroup(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
+  if (res == 0) {
+    return NSS_STATUS_SUCCESS;
+  }
+  *errnop = res;
+  if (res == ERANGE) {
+    return NSS_STATUS_TRYAGAIN;
+  }
+  return NSS_STATUS_NOTFOUND;
+}
+
+static enum nss_status
+_nss_oslogin_getgrgid_r(gid_t gid, struct group *result, char *buffer,
+                        size_t buflen, int *errnop) {
+  int res;
+  struct Buffer mgr;
+  memset(&mgr, 0, sizeof(struct Buffer));
+
+  *errnop = 0;
+
+  if (dial(&mgr) != 0) {
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  // send the verb GETGRGID with the argument <gid>
+  char str[MAX_ARGLEN];
+  sprintf(str, "GETGRGID %d\n", gid);
+  if (send(mgr.socket, str, strlen(str), 0) == -1) {
+      return NSS_STATUS_NOTFOUND;
+  }
+
+  mgr.bufsize = BUFSIZE;
+  mgr.buf = (char *)malloc(BUFSIZE);
+  if ((recvline(&mgr)) < 0) {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  if (mgr.buf[0] == '\n') {
+    free(mgr.buf);
+    return NSS_STATUS_NOTFOUND;
+  }
+
+  res = parsegroup(mgr.buf, result, buffer, buflen);
+  free(mgr.buf);
+  if (res == 0) {
+    return NSS_STATUS_SUCCESS;
+  }
+  *errnop = res;
+  if (res == ERANGE) {
+    return NSS_STATUS_TRYAGAIN;
+  }
+  return NSS_STATUS_NOTFOUND;
 }

@@ -123,6 +123,63 @@ TEST(ParserTest, TestParsegroupEnoent) {
   ASSERT_EQ(res, ENOENT);
 }
 
+TEST(IntegTest, TestGetpwnam) {
+  int res, errnop;
+  ssize_t buflen;
+  struct passwd result;
+  char *buf;
+
+  buflen = 32768;
+  buf = (char *)malloc(buflen);
+
+  res = _nss_oslogin_getpwnam_r("testuser", &result, buf, buflen, &errnop);
+  ASSERT_EQ(res, NSS_STATUS_SUCCESS);
+}
+
+TEST(IntegTest, TestGetpwuid) {
+  int res, errnop;
+  ssize_t buflen;
+  struct passwd result;
+  char *buf;
+
+  buflen = 32768;
+  buf = (char *)malloc(buflen);
+
+  res = _nss_oslogin_getpwuid_r(1000, &result, buf, buflen, &errnop);
+  ASSERT_EQ(res, NSS_STATUS_SUCCESS);
+}
+
+TEST(IntegTest, TestGetgrnam) {
+  int res, errnop;
+  ssize_t buflen;
+  struct group result;
+  char *buf;
+
+  buflen = 32768;
+  buf = (char *)malloc(buflen);
+
+  res = _nss_oslogin_getgrnam_r("testuser", &result, buf, buflen, &errnop);
+  ASSERT_EQ(res, NSS_STATUS_SUCCESS);
+  ASSERT_STREQ(result.gr_name, "testuser");
+  ASSERT_EQ(result.gr_gid, 1000);
+}
+
+TEST(IntegTest, TestGetgrgid) {
+  nss_status res;
+  int errnop;
+  ssize_t buflen;
+  struct group result;
+  char *buf;
+
+  buflen = 32768;
+  buf = (char *)malloc(buflen);
+
+  res = _nss_oslogin_getgrgid_r(1000, &result, buf, buflen, &errnop);
+  ASSERT_EQ(res, NSS_STATUS_SUCCESS);
+  ASSERT_STREQ(result.gr_name, "testuser");
+  ASSERT_EQ(result.gr_gid, 1000);
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

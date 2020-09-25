@@ -27,6 +27,7 @@
 
 
 #define MAX_GR_MEM 100
+#define MAX_ARGLEN 100
 
 #define PW_NAME 0
 #define PW_PASSWD 1
@@ -258,12 +259,13 @@ _nss_oslogin_getpwnam_r(const char *name, struct passwd *result, char *buffer,
   *errnop = 0;
 
   if (dial(&mgr) != 0) {
-    return NSS_STATUS_NOTFOUND;
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
   }
 
   // send the verb GETPWNAM with the argument <name>
   // TODO: validate incoming length of 'name' fits in 100 char
-  char str[100];
+  char str[MAX_ARGLEN];
   sprintf(str, "GETPWNAM %s\n", name);
   if ((res = send(mgr.socket, str, strlen(str), 0)) == -1) {
     return NSS_STATUS_NOTFOUND;
@@ -303,12 +305,13 @@ _nss_oslogin_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
   *errnop = 0;
 
   if (dial(&mgr) != 0) {
-    return NSS_STATUS_NOTFOUND;
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
   }
 
   // send the verb GETPWUID with the argument <uid>
   // TODO: validate incoming length of 'uid' fits in 100 char
-  char str[100];
+  char str[MAX_ARGLEN];
   sprintf(str, "GETPWUID %d\n", uid);
   if (send(mgr.socket, str, strlen(str), 0) == -1) {
       return NSS_STATUS_NOTFOUND;
@@ -347,12 +350,13 @@ _nss_oslogin_getgrnam_r(const char *name, struct group *result, char *buffer,
   *errnop = 0;
 
   if (dial(&mgr) != 0) {
-    return NSS_STATUS_NOTFOUND;
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
   }
 
   // send the verb GETPWNAM with the argument <name>
   // TODO: validate incoming length of 'name' fits in 100 char
-  char str[1000];
+  char str[MAX_ARGLEN];
   sprintf(str, "GETGRNAM %s\n", name);
   if (send(mgr.socket, str, strlen(str), 0) == -1) {
       return NSS_STATUS_NOTFOUND;
@@ -392,11 +396,12 @@ _nss_oslogin_getgrgid_r(gid_t gid, struct group *result, char *buffer,
   *errnop = 0;
 
   if (dial(&mgr) != 0) {
-    return NSS_STATUS_NOTFOUND;
+    *errnop = ENOENT;
+    return NSS_STATUS_UNAVAIL;
   }
 
   // send the verb GETGRGID with the argument <gid>
-  char str[100];
+  char str[MAX_ARGLEN];
   sprintf(str, "GETGRGID %d\n", gid);
   if (send(mgr.socket, str, strlen(str), 0) == -1) {
       return NSS_STATUS_NOTFOUND;

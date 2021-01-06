@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <nss.h>
 #include <pthread.h>
@@ -48,6 +49,11 @@ static const uint64_t kNssPasswdCacheSize = 2048;
 // exceed 32k.
 static const uint64_t kPasswdBufferSize = 32768;
 
+bool fexists(const char *filename) {
+  struct stat buffer;
+  return stat(filename, &buffer) == 0;
+}
+
 int refreshpasswdcache() {
   syslog(LOG_INFO, "Refreshing passwd entry cache");
   int error_code = 0;
@@ -78,6 +84,9 @@ int refreshpasswdcache() {
         syslog(LOG_ERR, "Failure getting users, quitting");
         count = 0;
         break;
+      } else if (error_code == ENOMSG) {
+        // ENOMSG means OS Login is not enabled.
+        break;
       }
       continue;
     }
@@ -91,14 +100,21 @@ int refreshpasswdcache() {
   }
   cache_file.close();
 
-  if (count > 0) {
-    if (rename(kDefaultBackupFilePath, kDefaultFilePath) != 0) {
-      syslog(LOG_ERR, "Could not move passwd cache file.");
+  if (error_code == ENOMSG) {
+    remove(kDefaultBackupFilePath);
+    return 0;
+  } else if (error_code == ENOENT) {
+    syslog(LOG_ERR, "Failed to get users, not updating passwd cache file, removing %s.", kDefaultBackupFilePath);
+    // If the cache file already exists, don't re-write it if we get a server
+    // error. Else, an empty cache file will be written below.
+    if (fexists(kDefaultFilePath)) {
       remove(kDefaultBackupFilePath);
+      return 0;
     }
-  } else {
-    // count <= 0
-    syslog(LOG_ERR, "Produced empty passwd cache file, removing %s.", kDefaultBackupFilePath);
+  }
+
+  if (rename(kDefaultBackupFilePath, kDefaultFilePath) != 0) {
+    syslog(LOG_ERR, "Error moving %s to %s.", kDefaultBackupFilePath, kDefaultFilePath);
     remove(kDefaultBackupFilePath);
   }
 
@@ -135,6 +151,9 @@ int refreshgroupcache() {
         syslog(LOG_ERR, "Failure getting groups, quitting");
         count = 0;
         break;
+      } else if (error_code == ENOMSG) {
+        // ENOMSG means OS Login is not enabled.
+        break;
       }
       continue;
     }
@@ -155,14 +174,21 @@ int refreshgroupcache() {
   }
   cache_file.close();
 
-  if (count > 0) {
-    if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
-      syslog(LOG_ERR, "Could not move group cache file.");
+  if (error_code == ENOMSG) {
+    remove(kDefaultBackupGroupPath);
+    return 0;
+  } else if (error_code == ENOENT) {
+    syslog(LOG_ERR, "Failed to get groups, not updating passwd cache file, removing %s.", kDefaultBackupGroupPath);
+    // If the cache file already exists, don't re-write it if we get a server
+    // error. Else, an empty cache file will be written below.
+    if (fexists(kDefaultGroupPath)) {
       remove(kDefaultBackupGroupPath);
+      return 0;
     }
-  } else {
-    // count <= 0
-    syslog(LOG_ERR, "Produced empty group cache file, removing %s.", kDefaultBackupGroupPath);
+  }
+
+  if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
+    syslog(LOG_ERR, "Error moving %s to %s.", kDefaultBackupGroupPath, kDefaultGroupPath);
     remove(kDefaultBackupGroupPath);
   }
 

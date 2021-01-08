@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <nss.h>
 #include <pthread.h>
@@ -49,11 +48,6 @@ static const uint64_t kNssPasswdCacheSize = 2048;
 // exceed 32k.
 static const uint64_t kPasswdBufferSize = 32768;
 
-bool fexists(const char *filename) {
-  struct stat buffer;
-  return stat(filename, &buffer) == 0;
-}
-
 int refreshpasswdcache() {
   syslog(LOG_INFO, "Refreshing passwd entry cache");
   int error_code = 0;
@@ -71,7 +65,6 @@ int refreshpasswdcache() {
   chown(kDefaultBackupFilePath, 0, 0);
   chmod(kDefaultBackupFilePath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-  int count = 0;
   nss_cache.Reset();
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
     BufferManager buffer_manager(buffer, kPasswdBufferSize);
@@ -82,7 +75,6 @@ int refreshpasswdcache() {
         syslog(LOG_ERR, "Malformed passwd entry, skipping");
       } else if (error_code == ENOENT) {
         syslog(LOG_ERR, "Failure getting users, quitting");
-        count = 0;
         break;
       } else if (error_code == ENOMSG) {
         // ENOMSG means OS Login is not enabled.
@@ -96,7 +88,6 @@ int refreshpasswdcache() {
     cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
                << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir
                << ":" << pwd.pw_shell << "\n";
-    count++;
   }
   cache_file.close();
 
@@ -105,9 +96,10 @@ int refreshpasswdcache() {
     return 0;
   } else if (error_code == ENOENT) {
     syslog(LOG_ERR, "Failed to get users, not updating passwd cache file, removing %s.", kDefaultBackupFilePath);
-    // If the cache file already exists, don't re-write it if we get a server
-    // error. Else, an empty cache file will be written below.
-    if (fexists(kDefaultFilePath)) {
+    // If the cache file already exists, we don't want to overwrite it on a
+    // server error. So remove the backup file and return here.
+    struct stat buffer;
+    if (stat(kDefaultFilePath, &buffer) == 0) {
       remove(kDefaultBackupFilePath);
       return 0;
     }
@@ -137,7 +129,6 @@ int refreshgroupcache() {
   chmod(kDefaultBackupGroupPath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   struct group grp;
-  int count = 0;
   nss_cache.Reset();
   std::vector<string> users;
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
@@ -149,7 +140,6 @@ int refreshgroupcache() {
         syslog(LOG_ERR, "Malformed group entry, skipping");
       } else if (error_code == ENOENT) {
         syslog(LOG_ERR, "Failure getting groups, quitting");
-        count = 0;
         break;
       } else if (error_code == ENOMSG) {
         // ENOMSG means OS Login is not enabled.
@@ -170,7 +160,6 @@ int refreshgroupcache() {
       cache_file << "," << users[i];
     }
     cache_file << "\n";
-    count++;
   }
   cache_file.close();
 
@@ -179,9 +168,10 @@ int refreshgroupcache() {
     return 0;
   } else if (error_code == ENOENT) {
     syslog(LOG_ERR, "Failed to get groups, not updating passwd cache file, removing %s.", kDefaultBackupGroupPath);
-    // If the cache file already exists, don't re-write it if we get a server
-    // error. Else, an empty cache file will be written below.
-    if (fexists(kDefaultGroupPath)) {
+    // If the cache file already exists, we don't want to overwrite it on a
+    // server error. So remove the backup file and return here.
+    struct stat buffer;
+    if (stat(kDefaultGroupPath, &buffer) == 0) {
       remove(kDefaultBackupGroupPath);
       return 0;
     }

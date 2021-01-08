@@ -205,7 +205,7 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
 //
 // * EINVAL  - current user entry was malformed in some way.
 // * ERANGE  - the page of results did not fit into the provided buffer.
-// * ENOMSG  - a 404 error when contacting the metadata server, indicating that
+// * ENOMSG  - a 404 error was received when contacting the metadata server, indicating that
 //             OS Login is not enabled in the instance metadata.
 // * ENOENT  - a general failure to load the cache occurred. Behavior of retries
 //             following ENOENT is undefined.
@@ -240,7 +240,7 @@ bool NssCache::NssGetpwentHelper(BufferManager* buf, struct passwd* result, int*
 //
 // * EINVAL  - current group entry was malformed in some way.
 // * ERANGE  - the page of results did not fit into the provided buffer.
-// * ENOMSG  - a 404 error when contacting the metadata server, indicating that
+// * ENOMSG  - a 404 error was received when contacting the metadata server, indicating that
 //             OS Login is not enabled in the instance metadata.
 // * ENOENT  - a general failure to load the cache occurred. Behavior of retries
 //             following ENOENT is undefined.

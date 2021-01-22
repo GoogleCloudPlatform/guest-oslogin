@@ -226,7 +226,7 @@ bool NssCache::NssGetpwentHelper(BufferManager* buf, struct passwd* result, int*
       return false;
     }
     // General failure to load the cache occurred.
-    if (!status || http_code != 200 || response.empty() || !LoadJsonGroupsToCache(response)) {
+    if (!status || http_code != 200 || response.empty() || !LoadJsonUsersToCache(response)) {
       *errnop = ENOENT;
       return false;
     }

@@ -799,7 +799,7 @@ bool FindGroup(struct group* result, BufferManager* buf, int* errnop) {
     url.str("");
     url << kMetadataServerUrl << "groups";
     if (pageToken != "")
-      url << "?pageToken=" << pageToken;
+      url << "?pagetoken=" << pageToken;
 
     response.clear();
     http_code = 0;
@@ -868,7 +868,7 @@ bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) 
     url.str("");
     url << kMetadataServerUrl << "groups?email=" << email;
     if (pageToken != "")
-      url << "?pageToken=" << pageToken;
+      url << "&pagetoken=" << pageToken;
 
     response.clear();
     http_code = 0;
@@ -878,7 +878,7 @@ bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) 
       return false;
     }
 
-    if (!ParseJsonToKey(response, "pageToken", &pageToken)) {
+    if (!ParseJsonToKey(response, "nextPageToken", &pageToken)) {
       pageToken = "";
     }
 
@@ -900,7 +900,7 @@ bool GetUsersForGroup(string groupname, std::vector<string>* users, int* errnop)
     url.str("");
     url << kMetadataServerUrl << "users?groupname=" << groupname;
     if (pageToken != "")
-      url << "?pageToken=" << pageToken;
+      url << "&pagetoken=" << pageToken;
 
     response.clear();
     http_code = 0;

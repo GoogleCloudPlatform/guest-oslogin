@@ -148,6 +148,7 @@ int refreshgroupcache() {
       continue;
     }
     std::string name(grp.gr_name);
+    users.clear();
     if (!GetUsersForGroup(name, &users, &error_code)) {
       syslog(LOG_ERR,
              "Error getting users for group %s (error_code %d), skipping.",

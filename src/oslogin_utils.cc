@@ -20,6 +20,7 @@
 #include <grp.h>
 #include <nss.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include <cstring>
@@ -455,6 +456,7 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
 
     Group g;
     g.gid = json_object_get_int64(gid);
+
     // get_int64 will confusingly return 0 if the string can't be converted to
     // an integer. We can't rely on type check as it may be a string in the API.
     if (g.gid == 0) {
@@ -781,69 +783,6 @@ bool ParseJsonToChallenges(const string& json, std::vector<Challenge>* challenge
 
 // ----------------- OS Login functions -----------------
 
-// TODO: this function reads all groups comparing names or gids; it should be
-// replaced by groups?groupname= lookup when this is available.
-bool FindGroup(struct group* result, BufferManager* buf, int* errnop) {
-  if (result->gr_name == NULL && result->gr_gid == 0) {
-    // Nobody told me what to find.
-    return false;
-  }
-  std::stringstream url;
-  std::vector<Group> groups;
-
-  string response;
-  long http_code;
-  string pageToken = "";
-
-  do {
-    url.str("");
-    url << kMetadataServerUrl << "groups";
-    if (pageToken != "")
-      url << "?pagetoken=" << pageToken;
-
-    response.clear();
-    http_code = 0;
-    if (!HttpGet(url.str(), &response, &http_code) || http_code != 200 ||
-        response.empty()) {
-      *errnop = EAGAIN;
-      return false;
-    }
-
-    if (!ParseJsonToKey(response, "nextPageToken", &pageToken)) {
-      pageToken = "";
-    }
-
-    groups.clear();
-    if (!ParseJsonToGroups(response, &groups) || groups.empty()) {
-      *errnop = ENOENT;
-      return false;
-    }
-
-    // Check for a match.
-    for (int i = 0; i < (int) groups.size(); i++) {
-      Group el = groups[i];
-      if ((result->gr_name != NULL) && (string(result->gr_name) == el.name)) {
-        // Set the name even though it matches because the final string must
-        // be stored in the provided buffer.
-        if (!buf->AppendString(el.name, &result->gr_name, errnop)) {
-          return false;
-        }
-        result->gr_gid = el.gid;
-        return true;
-      }
-      if ((result->gr_gid != 0) && (result->gr_gid == el.gid)) {
-        if (!buf->AppendString(el.name, &result->gr_name, errnop)) {
-          return false;
-        }
-        return true;
-      }
-    }
-  } while (pageToken != "0");
-  // Not found.
-  *errnop = ENOENT;
-  return false;
-}
-
 bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) {
   string response;
   if (!(GetUser(username, &response))) {
@@ -887,6 +826,78 @@ bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) 
       return false;
     }
   } while (pageToken != "");
+  return true;
+}
+
+bool GetGroupByName(string name, struct group* result, BufferManager* buf, int* errnop) {
+  std::stringstream url;
+  std::vector<Group> groups;
+
+  string response;
+  long http_code;
+  string pageToken = "";
+
+  url.str("");
+  url << kMetadataServerUrl << "groups?groupname=" << name;
+
+  response.clear();
+  http_code = 0;
+  if (!HttpGet(url.str(), &response, &http_code) || http_code != 200 ||
+      response.empty()) {
+    *errnop = EAGAIN;
+    return false;
+  }
+
+  groups.clear();
+  if (!ParseJsonToGroups(response, &groups) || groups.empty() || groups.size() != 1) {
+    *errnop = ENOENT;
+    return false;
+  }
+
+  Group el = groups[0];
+  result->gr_gid = el.gid;
+  if (!buf->AppendString(el.name, &result->gr_name, errnop)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errnop) {
+  std::stringstream url;
+  std::vector<Group> groups;
+
+  string response;
+  long http_code;
+  string pageToken = "";
+
+  url.str("");
+  char gidstring[65];
+  if (sprintf(gidstring,"%d",gid) < 1) {
+    return false;
+  }
+  url << kMetadataServerUrl << "groups?gid=" << gidstring;
+
+  response.clear();
+  http_code = 0;
+  if (!HttpGet(url.str(), &response, &http_code) || http_code != 200 ||
+      response.empty()) {
+    *errnop = EAGAIN;
+    return false;
+  }
+
+  groups.clear();
+  if (!ParseJsonToGroups(response, &groups) || groups.empty() || groups.size() != 1) {
+    *errnop = ENOENT;
+    return false;
+  }
+
+  Group el = groups[0];
+  result->gr_gid = el.gid;
+  if (!buf->AppendString(el.name, &result->gr_name, errnop)) {
+    return false;
+  }
+
   return true;
 }
 

@@ -35,7 +35,8 @@ using std::string;
 
 using oslogin_utils::AddUsersToGroup;
 using oslogin_utils::BufferManager;
-using oslogin_utils::FindGroup;
+using oslogin_utils::GetGroupByName;
+using oslogin_utils::GetGroupByGID;
 using oslogin_utils::GetGroupsForUser;
 using oslogin_utils::GetUsersForGroup;
 using oslogin_utils::Group;
@@ -95,25 +96,6 @@ enum nss_status _nss_oslogin_getpwnam_r(const char *name, struct passwd *result,
     }
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
   }
-  return NSS_STATUS_SUCCESS;
-}
-
-enum nss_status _nss_oslogin_getgrby(struct group *grp, char *buf,
-                                     size_t buflen, int *errnop) {
-  // If there is no cache file, we will assume there are no groups.
-  if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0)
-    return NSS_STATUS_NOTFOUND;
-  BufferManager buffer_manager(buf, buflen);
-  if (!FindGroup(grp, &buffer_manager, errnop))
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-
-  std::vector<string> users;
-  if (!GetUsersForGroup(grp->gr_name, &users, errnop))
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-
-  if (!AddUsersToGroup(users, grp, &buffer_manager, errnop))
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-
   return NSS_STATUS_SUCCESS;
 }
 
@@ -195,10 +177,27 @@ enum nss_status getselfgrnam(const char* name, struct group *grp,
 enum nss_status _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
                                         size_t buflen, int *errnop) {
   memset(grp, 0, sizeof(struct group));
+
   if (getselfgrgid(gid, grp, buf, buflen) == NSS_STATUS_SUCCESS)
       return NSS_STATUS_SUCCESS;
   grp->gr_gid = gid;
-  return _nss_oslogin_getgrby(grp, buf, buflen, errnop);
+
+  // If there is no cache file, we will assume there are no groups.
+  if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0)
+    return NSS_STATUS_NOTFOUND;
+
+  BufferManager buffer_manager(buf, buflen);
+  if (!GetGroupByGID(gid, grp, &buffer_manager, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+  std::vector<string> users;
+  if (!GetUsersForGroup(grp->gr_name, &users, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+  if (!AddUsersToGroup(users, grp, &buffer_manager, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+  return NSS_STATUS_SUCCESS;
 }
 
 // _nss_oslogin_getgrnam_r()
@@ -207,10 +206,27 @@ enum nss_status _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
 enum nss_status _nss_oslogin_getgrnam_r(const char *name, struct group *grp,
                                         char *buf, size_t buflen, int *errnop) {
   memset(grp, 0, sizeof(struct group));
+
   if (getselfgrnam(name, grp, buf, buflen) == NSS_STATUS_SUCCESS)
       return NSS_STATUS_SUCCESS;
   grp->gr_name = (char *)name;
-  return _nss_oslogin_getgrby(grp, buf, buflen, errnop);
+
+  // If there is no cache file, we will assume there are no groups.
+  if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0)
+    return NSS_STATUS_NOTFOUND;
+
+  BufferManager buffer_manager(buf, buflen);
+  if (!GetGroupByName(string(name), grp, &buffer_manager, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+  std::vector<string> users;
+  if (!GetUsersForGroup(grp->gr_name, &users, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+  if (!AddUsersToGroup(users, grp, &buffer_manager, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+  return NSS_STATUS_SUCCESS;
 }
 
 // _nss_cache_oslogin_initgroups_dyn()

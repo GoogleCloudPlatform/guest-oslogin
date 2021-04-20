@@ -437,7 +437,24 @@ TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {
   ASSERT_EQ(errnop, 0);
 }
 
-TEST(FindGroupTest, FindGroupByGidSucceeds) {
+TEST(GetGroupByTest, GetGroupByNameSucceeds) {
+  string response;
+  long http_code;
+  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_EQ(http_code, 200);
+
+  size_t buflen = 200 * sizeof(char);
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  int errnop = 0;
+
+  struct group grp = {};
+  ASSERT_TRUE(GetGroupByName("demo", &grp, &buf, &errnop));
+  ASSERT_EQ(errnop, 0);
+}
+
+TEST(GetGroupByTest, GetGroupByGIDSucceeds) {
   string response;
   long http_code;
   ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
@@ -449,26 +466,8 @@ TEST(FindGroupTest, FindGroupByGidSucceeds) {
   int errnop = 0;
 
   struct group grp = {};
-  grp.gr_gid = 123452;
-  ASSERT_TRUE(FindGroup(&grp, &buf, &errnop));
+  ASSERT_TRUE(GetGroupByGID(123452, &grp, &buf, &errnop));
   ASSERT_EQ(errnop, 0);
-}
-
-TEST(FindGroupTest, FindGroupByNameSucceeds) {
-  string response;
-  long http_code;
-  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
-
-  size_t buflen = 200 * sizeof(char);
-  char* buffer = (char*)malloc(buflen);
-  ASSERT_STRNE(buffer, NULL);
-  BufferManager buf(buffer, buflen);
-  int errnop;
-
-  const char* match = "demo";
-  struct group grp = {};
-  grp.gr_name = (char*)match;
-  ASSERT_TRUE(FindGroup(&grp, &buf, &errnop));
 }
 
 TEST(ParseJsonEmailTest, SuccessfullyParsesEmail) {

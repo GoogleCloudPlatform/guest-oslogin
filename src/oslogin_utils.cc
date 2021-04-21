@@ -783,6 +783,7 @@ bool ParseJsonToChallenges(const string& json, std::vector<Challenge>* challenge
 
 // ----------------- OS Login functions -----------------
 
+
 bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) {
   string response;
   if (!(GetUser(username, &response))) {
@@ -872,7 +873,7 @@ bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errno
   string pageToken = "";
 
   url.str("");
-  char gidstring[65];
+  char gidstring[MAX_GID_LENGTH];
   if (sprintf(gidstring, "%d", gid) < 1) {
     return false;
   }

@@ -155,10 +155,12 @@ int refreshgroupcache() {
              grp.gr_name, error_code);
       continue;
     }
-    cache_file << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":" << users.front();
-    users.erase(users.begin());
+    cache_file << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":";
     for (int i = 0; i < (int)users.size(); i++) {
-      cache_file << "," << users[i];
+      if (i > 0) {
+        cache_file << ",";
+      }
+      cache_file << users[i];
     }
     cache_file << "\n";
   }

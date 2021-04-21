@@ -414,7 +414,7 @@ bool ParseJsonToUsers(const string& json, std::vector<string>* result) {
 
   json_object* users = NULL;
   if (!json_object_object_get_ex(root, "usernames", &users)) {
-    return false;
+    return true;
   }
   if (json_object_get_type(users) != json_type_array) {
     return false;
@@ -925,7 +925,6 @@ bool GetUsersForGroup(string groupname, std::vector<string>* users, int* errnop)
       pageToken = "";
     }
     if (!ParseJsonToUsers(response, users)) {
-    // TODO: what if there are no users? add a test.
       *errnop = EINVAL;
       return false;
     }

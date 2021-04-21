@@ -28,13 +28,13 @@ new_tests : new_test_runner $(TOPDIR)/src/nss/new_nss_oslogin.c
 	$(NEW_TEST_RUNNER) ${GTESTARGS}
 
 non_network_tests : test_runner new_test_runner
-	$(TEST_RUNNER) --gtest_filter=*-FindGroupTest.*:GetUsersForGroupTest.*
+	$(TEST_RUNNER) --gtest_filter=*-GetGroupByTest.*:GetUsersForGroupTest.*
 	$(NEW_TEST_RUNNER) --gtest_filter=ParserTest.*
 
 network_tests : test_runner ping reset
-	$(TEST_RUNNER) --gtest_filter=FindGroupTest.*:GetUsersForGroupTest.*
+	$(TEST_RUNNER) --gtest_filter=GetGroupByTest.*:GetUsersForGroupTest.*
 
-# run as $ make tests GTESTARGS="--gtest_filter=FindGroupTest.*"
+# run as $ make tests GTESTARGS="--gtest_filter=GetGroupByTest.*"
 alltests : test_runner
 	$(TEST_RUNNER) ${GTESTARGS}
 

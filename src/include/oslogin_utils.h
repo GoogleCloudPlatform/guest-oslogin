@@ -26,8 +26,9 @@
 #define INTERNAL_TWO_FACTOR "INTERNAL_TWO_FACTOR"
 #define IDV_PREREGISTERED_PHONE "IDV_PREREGISTERED_PHONE"
 #define SECURITY_KEY_OTP "SECURITY_KEY_OTP"
-
 #define INITGROUP_CACHE_EXPIRE_SECONDS 500
+#define MAX_GID_LENGTH 20
+
 
 #ifdef DEBUG
 #undef DEBUG
@@ -225,9 +226,11 @@ bool ParseJsonToUsers(const string& json, std::vector<string>* users);
 bool AddUsersToGroup(std::vector<string> users, struct group* result,
                        BufferManager* buf, int* errnop);
 
-// Iterates through all groups until one matching provided group is found,
-// replacing gr_name with a buffermanager provided string.
-bool FindGroup(struct group* grp, BufferManager* buf, int* errnop);
+// Gets group matching name.
+bool GetGroupByName(string name, struct group* grp, BufferManager* buf, int* errnop);
+
+// Gets group matching GID.
+bool GetGroupByGID(int gid, struct group* grp, BufferManager* buf, int* errnop);
 
 // Iterates through all users for a group, storing results in a provided string vector.
 bool GetUsersForGroup(string groupname, std::vector<string>* users, int* errnop);

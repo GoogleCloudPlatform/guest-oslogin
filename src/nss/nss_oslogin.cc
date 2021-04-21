@@ -194,7 +194,7 @@ enum nss_status _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
   if (!GetUsersForGroup(grp->gr_name, &users, errnop))
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
-  if (!AddUsersToGroup(users, grp, &buffer_manager, errnop))
+  if (!users.empty() && !AddUsersToGroup(users, grp, &buffer_manager, errnop))
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
   return NSS_STATUS_SUCCESS;
@@ -223,7 +223,7 @@ enum nss_status _nss_oslogin_getgrnam_r(const char *name, struct group *grp,
   if (!GetUsersForGroup(grp->gr_name, &users, errnop))
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
-  if (!AddUsersToGroup(users, grp, &buffer_manager, errnop))
+  if (!users.empty() && !AddUsersToGroup(users, grp, &buffer_manager, errnop))
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
   return NSS_STATUS_SUCCESS;

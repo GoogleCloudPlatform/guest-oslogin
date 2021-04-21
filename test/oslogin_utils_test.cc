@@ -406,21 +406,11 @@ TEST(ParseJsonToUsersTest, ParseJsonToUsersSucceeds) {
 
 // Test parsing a valid JSON response from the metadata server.
 TEST(ParseJsonToUsersTest, ParseJsonToUsersEmptyGroupSucceeds) {
-  string test_group_users = "{\"usernames\":[]}";
+  string test_group_users = "{\"nextPageToken\":\"0\"}";
 
   std::vector<string> users;
   ASSERT_TRUE(ParseJsonToUsers(test_group_users, &users));
   ASSERT_TRUE(users.empty());
-}
-
-// Test parsing malformed JSON responses.
-TEST(ParseJsonToUsersTest, ParseJsonToUsersFails) {
-  string test_group_users =
-      "{\"badstuff\":[\"user0001\",\"user0002\",\"user0003\",\"user0004\","
-      "\"user0005\"]}";
-
-  std::vector<string> users;
-  ASSERT_FALSE(ParseJsonToUsers(test_group_users, &users));
 }
 
 TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {

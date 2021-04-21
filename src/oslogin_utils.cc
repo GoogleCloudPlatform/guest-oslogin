@@ -873,7 +873,7 @@ bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errno
 
   url.str("");
   char gidstring[65];
-  if (sprintf(gidstring,"%d",gid) < 1) {
+  if (sprintf(gidstring, "%d", gid) < 1) {
     return false;
   }
   url << kMetadataServerUrl << "groups?gid=" << gidstring;

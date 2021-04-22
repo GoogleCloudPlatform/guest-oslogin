@@ -31,6 +31,8 @@
 #include <sstream>
 #include <string>
 
+#define MAXBUFSIZE 32768
+
 using std::string;
 
 using oslogin_utils::AddUsersToGroup;
@@ -102,8 +104,38 @@ enum nss_status _nss_oslogin_getpwnam_r(const char *name, struct passwd *result,
 // look for OS Login user with uid matching the requested gid, and craft a
 // self-group for it.
 enum nss_status getselfgrgid(gid_t gid, struct group *grp,
-                                          char *buf, size_t buflen) {
+                                          char *buf, size_t buflen,
+                                          int *errnop) {
   BufferManager buffer_manager(buf, buflen);
+
+  // Look for a matching user in cache.
+  FILE *p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
+  if (p_file != NULL) {
+    struct passwd user;
+    struct passwd *userp = NULL;
+    char userbuf[MAXBUFSIZE];
+
+    while (fgetpwent_r(p_file, &user, userbuf, MAXBUFSIZE, &userp) == 0) {
+      if (user.pw_uid == gid) {
+        memset(grp, 0, sizeof(struct group));
+
+        // Copy from userbuf to user-provided buffer.
+        if (!buffer_manager.AppendString(user.pw_name, &grp->gr_name, errnop))
+          return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+        // Add user to group.
+        std::vector<string> members;
+        members.push_back(string(user.pw_name));
+        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop))
+          return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+        return NSS_STATUS_SUCCESS;
+      }
+    }
+    fclose(p_file);
+  }
+
+  // Look for matching user in backend.
   std::stringstream url;
   url << kMetadataServerUrl << "users?uid=" << gid;
   string response;
@@ -113,24 +145,23 @@ enum nss_status getselfgrgid(gid_t gid, struct group *grp,
     return NSS_STATUS_NOTFOUND;
   }
   struct passwd result;
-  int errnop;
-  if (!ParseJsonToPasswd(response, &result, &buffer_manager, &errnop))
+  if (!ParseJsonToPasswd(response, &result, &buffer_manager, errnop))
     return NSS_STATUS_NOTFOUND;
 
   if (result.pw_gid != result.pw_uid)
     return NSS_STATUS_NOTFOUND;
 
   // Set the group name to the name of the matching user.
-  if (!buffer_manager.AppendString(result.pw_name, &grp->gr_name, &errnop))
-    return NSS_STATUS_NOTFOUND;
+  if (!buffer_manager.AppendString(result.pw_name, &grp->gr_name, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
   grp->gr_gid = result.pw_uid;
 
   // Create a list of only the matching user and add to members list.
   std::vector<string> members;
   members.push_back(string(result.pw_name));
-  if (!AddUsersToGroup(members, grp, &buffer_manager, &errnop))
-    return NSS_STATUS_NOTFOUND;
+  if (!AddUsersToGroup(members, grp, &buffer_manager, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
   return NSS_STATUS_SUCCESS;
 }
@@ -138,8 +169,36 @@ enum nss_status getselfgrgid(gid_t gid, struct group *grp,
 // look for OS Login user with name matching the requested name, and craft a
 // self-group for it.
 enum nss_status getselfgrnam(const char* name, struct group *grp,
-                                          char *buf, size_t buflen) {
+                                          char *buf, size_t buflen,
+                                          int *errnop) {
   BufferManager buffer_manager(buf, buflen);
+
+  // Look for a matching user in cache.
+  FILE *p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
+  if (p_file != NULL) {
+    struct passwd user;
+    struct passwd *userp = NULL;
+    char userbuf[MAXBUFSIZE];
+
+    while (fgetpwent_r(p_file, &user, userbuf, MAXBUFSIZE, &userp) == 0) {
+      if (strcmp(user.pw_name, name) == 0) {
+        memset(grp, 0, sizeof(struct group));
+
+        grp->gr_gid = user.pw_uid;
+
+        // Add user to group.
+        std::vector<string> members;
+        members.push_back(string(name));
+        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop))
+          return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+
+        return NSS_STATUS_SUCCESS;
+      }
+    }
+    fclose(p_file);
+  }
+
+  // Look for matching user in backend.
   std::stringstream url;
   url << kMetadataServerUrl << "users?username=" << UrlEncode(string(name));
   string response;
@@ -149,24 +208,23 @@ enum nss_status getselfgrnam(const char* name, struct group *grp,
     return NSS_STATUS_NOTFOUND;
   }
   struct passwd result;
-  int errnop;
-  if (!ParseJsonToPasswd(response, &result, &buffer_manager, &errnop))
+  if (!ParseJsonToPasswd(response, &result, &buffer_manager, errnop))
     return NSS_STATUS_NOTFOUND;
 
   if (result.pw_gid != result.pw_uid)
     return NSS_STATUS_NOTFOUND;
 
   // Set the group name to the name of the matching user.
-  if (!buffer_manager.AppendString(result.pw_name, &grp->gr_name, &errnop))
-    return NSS_STATUS_NOTFOUND;
+  if (!buffer_manager.AppendString(result.pw_name, &grp->gr_name, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
   grp->gr_gid = result.pw_uid;
 
   // Create a list of only the matching user and add to members list.
   std::vector<string> members;
   members.push_back(string(result.pw_name));
-  if (!AddUsersToGroup(members, grp, &buffer_manager, &errnop))
-    return NSS_STATUS_NOTFOUND;
+  if (!AddUsersToGroup(members, grp, &buffer_manager, errnop))
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
 
   return NSS_STATUS_SUCCESS;
 }
@@ -176,19 +234,18 @@ enum nss_status getselfgrnam(const char* name, struct group *grp,
 
 enum nss_status _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
                                         size_t buflen, int *errnop) {
-  memset(grp, 0, sizeof(struct group));
-
-  if (getselfgrgid(gid, grp, buf, buflen) == NSS_STATUS_SUCCESS)
-      return NSS_STATUS_SUCCESS;
-  grp->gr_gid = gid;
-
   // If there is no cache file, we will assume there are no groups.
   if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0)
-    return NSS_STATUS_NOTFOUND;
+    return getselfgrgid(gid, grp, buf, buflen, errnop);
 
+  memset(grp, 0, sizeof(struct group));
   BufferManager buffer_manager(buf, buflen);
-  if (!GetGroupByGID(gid, grp, &buffer_manager, errnop))
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+  if (!GetGroupByGID(gid, grp, &buffer_manager, errnop)) {
+    if (*errnop == ERANGE) {
+      return NSS_STATUS_TRYAGAIN;
+    }
+    return getselfgrgid(gid, grp, buf, buflen, errnop);
+  }
 
   std::vector<string> users;
   if (!GetUsersForGroup(grp->gr_name, &users, errnop))
@@ -205,19 +262,18 @@ enum nss_status _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
 
 enum nss_status _nss_oslogin_getgrnam_r(const char *name, struct group *grp,
                                         char *buf, size_t buflen, int *errnop) {
-  memset(grp, 0, sizeof(struct group));
-
-  if (getselfgrnam(name, grp, buf, buflen) == NSS_STATUS_SUCCESS)
-      return NSS_STATUS_SUCCESS;
-  grp->gr_name = (char *)name;
-
   // If there is no cache file, we will assume there are no groups.
   if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0)
-    return NSS_STATUS_NOTFOUND;
+    return getselfgrnam(name, grp, buf, buflen, errnop);
 
+  memset(grp, 0, sizeof(struct group));
   BufferManager buffer_manager(buf, buflen);
-  if (!GetGroupByName(string(name), grp, &buffer_manager, errnop))
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+  if (!GetGroupByName(string(name), grp, &buffer_manager, errnop)) {
+    if (*errnop == ERANGE) {
+           return NSS_STATUS_TRYAGAIN;
+    }
+    return getselfgrnam(name, grp, buf, buflen, errnop);
+  }
 
   std::vector<string> users;
   if (!GetUsersForGroup(grp->gr_name, &users, errnop))

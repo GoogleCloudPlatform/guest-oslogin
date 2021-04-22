@@ -873,11 +873,7 @@ bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errno
   string pageToken = "";
 
   url.str("");
-  char gidstring[MAX_GID_LENGTH];
-  if (sprintf(gidstring, "%d", gid) < 1) {
-    return false;
-  }
-  url << kMetadataServerUrl << "groups?gid=" << gidstring;
+  url << kMetadataServerUrl << "groups?gid=" << gid;
 
   response.clear();
   http_code = 0;

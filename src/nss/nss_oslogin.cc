@@ -101,11 +101,10 @@ enum nss_status _nss_oslogin_getpwnam_r(const char *name, struct passwd *result,
   return NSS_STATUS_SUCCESS;
 }
 
-// look for OS Login user with uid matching the requested gid, and craft a
+// Look for OS Login user with uid matching the requested gid, and craft a
 // self-group for it.
 enum nss_status getselfgrgid(gid_t gid, struct group *grp,
-                                          char *buf, size_t buflen,
-                                          int *errnop) {
+                             char *buf, size_t buflen, int *errnop) {
   BufferManager buffer_manager(buf, buflen);
 
   // Look for a matching user in cache.
@@ -166,11 +165,10 @@ enum nss_status getselfgrgid(gid_t gid, struct group *grp,
   return NSS_STATUS_SUCCESS;
 }
 
-// look for OS Login user with name matching the requested name, and craft a
+// Look for OS Login user with name matching the requested name, and craft a
 // self-group for it.
 enum nss_status getselfgrnam(const char* name, struct group *grp,
-                                          char *buf, size_t buflen,
-                                          int *errnop) {
+                             char *buf, size_t buflen, int *errnop) {
   BufferManager buffer_manager(buf, buflen);
 
   // Look for a matching user in cache.

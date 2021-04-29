@@ -802,7 +802,7 @@ bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) 
   std::stringstream url;
 
   long http_code;
-  string pageToken = "";
+  string pageToken ("");
 
   do {
     url.str("");
@@ -819,14 +819,15 @@ bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop) 
     }
 
     if (!ParseJsonToKey(response, "nextPageToken", &pageToken)) {
-      pageToken = "";
+      *errnop = ENOENT;
+      return false;
     }
 
     if (!ParseJsonToGroups(response, groups)) {
       *errnop = ENOENT;
       return false;
     }
-  } while (pageToken != "");
+  } while (pageToken != "0");
   return true;
 }
 
@@ -836,7 +837,6 @@ bool GetGroupByName(string name, struct group* result, BufferManager* buf, int* 
 
   string response;
   long http_code;
-  string pageToken = "";
 
   url.str("");
   url << kMetadataServerUrl << "groups?groupname=" << name;
@@ -870,7 +870,6 @@ bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errno
 
   string response;
   long http_code;
-  string pageToken = "";
 
   url.str("");
   url << kMetadataServerUrl << "groups?gid=" << gid;
@@ -901,7 +900,7 @@ bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errno
 bool GetUsersForGroup(string groupname, std::vector<string>* users, int* errnop) {
   string response;
   long http_code;
-  string pageToken = "";
+  string pageToken ("");
   std::stringstream url;
 
   do {
@@ -918,7 +917,8 @@ bool GetUsersForGroup(string groupname, std::vector<string>* users, int* errnop)
       return false;
     }
     if (!ParseJsonToKey(response, "nextPageToken", &pageToken)) {
-      pageToken = "";
+      *errnop = EINVAL;
+      return false;
     }
     if (!ParseJsonToUsers(response, users)) {
       *errnop = EINVAL;

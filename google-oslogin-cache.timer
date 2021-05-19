@@ -1,9 +1,0 @@
-[Unit]
-Description=NSS cache refresh timer
-
-[Timer]
-OnBootSec=5
-OnUnitActiveSec=6h
-
-[Install]
-WantedBy=timers.target

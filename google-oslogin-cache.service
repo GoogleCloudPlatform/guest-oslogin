@@ -1,8 +1,0 @@
-[Unit]
-Description=NSS cache refresh
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/google_oslogin_nss_cache
-
-# No [Install] section - this is controlled by google-oslogin-cache.timer

@@ -25,6 +25,7 @@
 #include <sys/un.h>
 #include <pthread.h>
 
+#include "compat.h"
 
 #define MAX_GR_MEM 100
 #define MAX_ARGLEN 100
@@ -71,6 +72,26 @@
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
+
+// Locking implementation: use pthreads.
+static pthread_mutex_t pwmutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t grmutex = PTHREAD_MUTEX_INITIALIZER;
+#define NSS_OSLOGIN_PWLOCK() \
+  do {                           \
+    pthread_mutex_lock(&pwmutex);  \
+  } while (0)
+#define NSS_OSLOGIN_PWUNLOCK() \
+  do {                             \
+    pthread_mutex_unlock(&pwmutex);  \
+  } while (0)
+#define NSS_OSLOGIN_GRLOCK() \
+  do {                           \
+    pthread_mutex_lock(&grmutex);  \
+  } while (0)
+#define NSS_OSLOGIN_GRUNLOCK() \
+  do {                             \
+    pthread_mutex_unlock(&grmutex);  \
+  } while (0)
 
 #define DEBUGF(...) \
     do { \
@@ -430,3 +451,239 @@ _nss_oslogin_getgrgid_r(gid_t gid, struct group *result, char *buffer,
   }
   return NSS_STATUS_NOTFOUND;
 }
+
+static enum nss_status _nss_oslogin_endpwent_locked(void) {
+  pwbuf.bufsize = 0;
+  pwbuf.buflen = 0;
+
+  // if needed (the socket in the struct is not 0), close it.
+  if (pwbuf.socket != 0) {
+    close(pwbuf.socket);
+    pwbuf.socket = 0;
+  }
+
+  // if needed (the buffer in the struct is not NULL), free it.
+  if (pwbuf.buf != NULL) {
+    free(pwbuf.buf);
+    pwbuf.buf = NULL;
+  }
+
+  return NSS_STATUS_SUCCESS;
+}
+
+static enum nss_status _nss_oslogin_endpwent(void) {
+  enum nss_status ret;
+  NSS_OSLOGIN_PWLOCK();
+  ret = _nss_oslogin_endpwent_locked();
+  NSS_OSLOGIN_PWUNLOCK();
+  return ret;
+}
+
+static enum nss_status _nss_oslogin_setpwent_locked() {
+  if (pwbuf.socket != 0) {
+    _nss_oslogin_endpwent_locked();
+  }
+
+  if (dial(&pwbuf) != 0) {
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  return NSS_STATUS_SUCCESS;
+}
+
+static enum nss_status _nss_oslogin_setpwent(int __attribute__((__unused__)) stayopen) {
+  enum nss_status ret;
+  NSS_OSLOGIN_PWLOCK();
+  ret = _nss_oslogin_setpwent_locked();
+  NSS_OSLOGIN_PWUNLOCK();
+  return ret;
+}
+
+static enum nss_status
+_nss_oslogin_getpwent_r_locked(struct passwd *result, char *buffer, size_t buflen,
+                        int *errnop) {
+  int res;
+  *errnop = 0;
+
+  if (pwbuf.buf == NULL) {
+    pwbuf.buf = (char *)malloc(BUFSIZE);
+    if (pwbuf.buf == NULL || dial(&pwbuf) != 0) {
+      *errnop = ENOENT;
+      return NSS_STATUS_UNAVAIL;
+    }
+    pwbuf.bufsize = BUFSIZE;
+  }
+
+  if (pwbuf.buflen == 0) {
+    char str[] = "GETPWENT\n";
+    if (send(pwbuf.socket, str, strlen(str), 0) == -1) {
+        return NSS_STATUS_NOTFOUND;
+    }
+
+    if ((recvline(&pwbuf)) < 0) {
+      return NSS_STATUS_NOTFOUND;
+    }
+
+    if (pwbuf.buf[0] == '\n') {
+      return NSS_STATUS_NOTFOUND;
+    }
+  }
+
+  res = parsepasswd(pwbuf.buf,result,buffer,buflen);
+  if (res == 0) {
+    pwbuf.buflen = 0;
+    return NSS_STATUS_SUCCESS;
+  }
+  *errnop = res;
+  if (res == ERANGE) {
+    return NSS_STATUS_TRYAGAIN;
+  }
+  _nss_oslogin_endpwent();
+  return NSS_STATUS_NOTFOUND;
+}
+
+static enum nss_status
+_nss_oslogin_getpwent_r(struct passwd *result, char *buffer, size_t buflen,
+                        int *errnop) {
+  enum nss_status ret;
+  NSS_OSLOGIN_PWLOCK();
+  ret = _nss_oslogin_getpwent_r_locked(result, buffer, buflen, errnop);
+  NSS_OSLOGIN_PWUNLOCK();
+
+  return ret;
+}
+
+static enum nss_status _nss_oslogin_endgrent_locked(void) {
+  grbuf.bufsize = 0;
+  grbuf.buflen = 0;
+
+  if (grbuf.socket != 0) {
+    close(grbuf.socket);
+    grbuf.socket = 0;
+  }
+
+  if (grbuf.buf != NULL) {
+    free(grbuf.buf);
+    grbuf.buf = NULL;
+  }
+
+  return NSS_STATUS_SUCCESS;
+}
+
+static enum nss_status _nss_oslogin_endgrent(void) {
+  enum nss_status ret;
+  NSS_OSLOGIN_GRLOCK();
+  ret = _nss_oslogin_endgrent_locked();
+  NSS_OSLOGIN_GRUNLOCK();
+  return ret;
+}
+
+static enum nss_status _nss_oslogin_setgrent_locked() {
+  if (grbuf.socket != 0) {
+    _nss_oslogin_endgrent_locked();
+  }
+
+  if (!dial(&grbuf)) {
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  return NSS_STATUS_SUCCESS;
+}
+
+static enum nss_status _nss_oslogin_setgrent(int __attribute__((__unused__)) stayopen) {
+  enum nss_status ret;
+  NSS_OSLOGIN_GRLOCK();
+  ret = _nss_oslogin_setgrent_locked();
+  NSS_OSLOGIN_GRUNLOCK();
+  return ret;
+}
+
+static enum nss_status
+_nss_oslogin_getgrent_r_locked(struct group *result, char *buffer, size_t
+                               buflen, int *errnop) {
+  int res;
+  *errnop = 0;
+
+  if (grbuf.buf == NULL) {
+    grbuf.buf = (char *)malloc(BUFSIZE);
+    if (grbuf.buf == NULL || dial(&grbuf) != 0) {
+      *errnop = ENOENT;
+      return NSS_STATUS_UNAVAIL;
+    }
+    grbuf.bufsize = BUFSIZE;
+  }
+
+  if (grbuf.buflen == 0) {
+    char str[] = "GETGRENT\n";
+    if (send(grbuf.socket, str, strlen(str), 0) == -1) {
+        return NSS_STATUS_NOTFOUND;
+    }
+
+    if ((recvline(&grbuf)) < 0) {
+      return NSS_STATUS_NOTFOUND;
+    }
+
+    if (grbuf.buf[0] == '\n') {
+      return NSS_STATUS_NOTFOUND;
+    }
+  }
+
+  res = parsegroup(grbuf.buf,result,buffer,buflen);
+  if (res == 0) {
+    grbuf.buflen = 0;
+    return NSS_STATUS_SUCCESS;
+  }
+  *errnop = res;
+  if (res == ERANGE) {
+    return NSS_STATUS_TRYAGAIN;
+  }
+  _nss_oslogin_endgrent();
+  return NSS_STATUS_NOTFOUND;
+}
+
+static enum nss_status
+_nss_oslogin_getgrent_r(struct group *result, char *buffer, size_t buflen,
+                        int *errnop) {
+  enum nss_status ret;
+  NSS_OSLOGIN_PWLOCK();
+  ret = _nss_oslogin_getgrent_r_locked(result, buffer, buflen, errnop);
+  NSS_OSLOGIN_PWUNLOCK();
+
+  return ret;
+}
+
+NSS_METHOD_PROTOTYPE(__nss_compat_getpwnam_r);
+NSS_METHOD_PROTOTYPE(__nss_compat_getpwuid_r);
+NSS_METHOD_PROTOTYPE(__nss_compat_getpwent_r);
+NSS_METHOD_PROTOTYPE(__nss_compat_setpwent);
+NSS_METHOD_PROTOTYPE(__nss_compat_endpwent);
+
+NSS_METHOD_PROTOTYPE(__nss_compat_getgrnam_r);
+NSS_METHOD_PROTOTYPE(__nss_compat_getgrgid_r);
+NSS_METHOD_PROTOTYPE(__nss_compat_getgrent_r);
+NSS_METHOD_PROTOTYPE(__nss_compat_setgrent);
+NSS_METHOD_PROTOTYPE(__nss_compat_endgrent);
+
+DECLARE_NSS_METHOD_TABLE(methods,
+                         {NSDB_PASSWD, "getpwnam_r", __nss_compat_getpwnam_r,
+                          (void *)_nss_oslogin_getpwnam_r},
+                         {NSDB_PASSWD, "getpwuid_r", __nss_compat_getpwuid_r,
+                          (void *)_nss_oslogin_getpwuid_r},
+                         {NSDB_PASSWD, "getpwent_r", __nss_compat_getpwent_r,
+                          (void *)_nss_oslogin_getpwent_r},
+                         {NSDB_PASSWD, "endpwent", __nss_compat_endpwent,
+                          (void *)_nss_oslogin_endpwent},
+                         {NSDB_PASSWD, "setpwent", __nss_compat_setpwent,
+                          (void *)_nss_oslogin_setpwent},
+                         {NSDB_GROUP, "getgrnam_r", __nss_compat_getgrnam_r,
+                          (void *)_nss_oslogin_getgrnam_r},
+                         {NSDB_GROUP, "getgrgid_r", __nss_compat_getgrgid_r,
+                          (void *)_nss_oslogin_getgrgid_r},
+                         {NSDB_GROUP, "getgrent_r", __nss_compat_getgrent_r,
+                          (void *)_nss_oslogin_getgrent_r},
+                         {NSDB_GROUP, "endgrent", __nss_compat_endgrent,
+                          (void *)_nss_oslogin_endgrent},
+                         {NSDB_GROUP, "setgrent", __nss_compat_setgrent,
+                          (void *)_nss_oslogin_setgrent}, )
+
+NSS_REGISTER_METHODS(methods)

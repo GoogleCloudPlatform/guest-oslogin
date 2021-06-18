@@ -62,6 +62,7 @@ int refreshpasswdcache() {
     syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupFilePath);
     return -1;
   }
+  cache_file << std::unitbuf; // enable automatic flushing
   chown(kDefaultBackupFilePath, 0, 0);
   chmod(kDefaultBackupFilePath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -125,6 +126,7 @@ int refreshgroupcache() {
     syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupGroupPath);
     return -1;
   }
+  cache_file << std::unitbuf; // enable automatic flushing
   chown(kDefaultBackupGroupPath, 0, 0);
   chmod(kDefaultBackupGroupPath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 

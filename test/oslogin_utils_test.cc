@@ -416,7 +416,7 @@ TEST(ParseJsonToUsersTest, ParseJsonToUsersEmptyGroupSucceeds) {
 TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {
   string response;
   long http_code;
-  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_TRUE(HttpGet("http://169.254.169.254/reset", &response, &http_code));
 
   std::vector<string> users;
   int errnop = 0;
@@ -430,7 +430,7 @@ TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {
 TEST(GetGroupByTest, GetGroupByNameSucceeds) {
   string response;
   long http_code;
-  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_TRUE(HttpGet("http://169.254.169.254/reset", &response, &http_code));
   ASSERT_EQ(http_code, 200);
 
   size_t buflen = 200 * sizeof(char);
@@ -447,7 +447,7 @@ TEST(GetGroupByTest, GetGroupByNameSucceeds) {
 TEST(GetGroupByTest, GetGroupByGIDSucceeds) {
   string response;
   long http_code;
-  ASSERT_TRUE(HttpGet("http://metadata.google.internal/reset", &response, &http_code));
+  ASSERT_TRUE(HttpGet("http://169.254.169.254/reset", &response, &http_code));
 
   size_t buflen = 200 * sizeof(char);
   char* buffer = (char*)malloc(buflen);

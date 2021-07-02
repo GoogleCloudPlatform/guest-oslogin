@@ -39,9 +39,9 @@ alltests : test_runner
 	$(TEST_RUNNER) ${GTESTARGS}
 
 ping :
-	nc -vzw2 metadata.google.internal 80 >/dev/null 2>&1
+	nc -vzw2 169.254.169.254 80 >/dev/null 2>&1
 
 reset :
-	curl -Ss http://metadata.google.internal/reset >/dev/null 2>&1
+	curl -Ss http://169.254.169.254/reset >/dev/null 2>&1
 
 .PHONY : all clean alltests ping reset gtest prowtest non_network_tests network_tests

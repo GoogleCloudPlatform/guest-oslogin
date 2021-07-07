@@ -127,6 +127,7 @@ int refreshgroupcache() {
     return -1;
   }
   cache_file << std::unitbuf; // enable automatic flushing
+  cache_file.exceptions( cache_file.exceptions() | std::ofstream::failbit | std::ofstream::badbit );
   chown(kDefaultBackupGroupPath, 0, 0);
   chmod(kDefaultBackupGroupPath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -157,22 +158,35 @@ int refreshgroupcache() {
              grp.gr_name, error_code);
       continue;
     }
-    cache_file << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":";
-    for (int i = 0; i < (int)users.size(); i++) {
-      if (i > 0) {
-        cache_file << ",";
+    try {
+      cache_file << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":";
+      for (int i = 0; i < (int)users.size(); i++) {
+        if (i > 0) {
+          cache_file << ",";
+        }
+        cache_file << users[i];
       }
-      cache_file << users[i];
+      cache_file << "\n";
     }
-    cache_file << "\n";
+    catch (std::ofstream::failure e) {
+      syslog(LOG_ERR, "Exception writing file");
+      error_code = ENOENT;
+      break;
+    }
   }
-  cache_file.close();
+  try {
+    cache_file.close();
+  }
+  catch (std::ofstream::failure e) {
+    syslog(LOG_ERR, "Exception closing file");
+    error_code = ENOENT;
+  }
 
   if (error_code == ENOMSG) {
     remove(kDefaultBackupGroupPath);
     return 0;
   } else if (error_code == ENOENT) {
-    syslog(LOG_ERR, "Failed to get groups, not updating passwd cache file, removing %s.", kDefaultBackupGroupPath);
+    syslog(LOG_ERR, "Failed to get groups, not updating group cache file, removing %s.", kDefaultBackupGroupPath);
     // If the cache file already exists, we don't want to overwrite it on a
     // server error. So remove the backup file and return here.
     struct stat buffer;

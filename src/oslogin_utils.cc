@@ -581,7 +581,10 @@ std::vector<string> ParseJsonToSshKeys(const string& json) {
   if (json_object_get_type(ssh_public_keys) != json_type_object) {
     goto cleanup;
   }
+
   {
+  // Extra braces to indicate scope of key, obj below to compiler. Otherwise
+  // g++ complains that `goto` bypasses initializers.
   json_object_object_foreach(ssh_public_keys, key, obj) {
     (void)(key);
     if (json_object_get_type(obj) != json_type_object) {
@@ -666,6 +669,8 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
     goto cleanup;
   }
   {
+  // Extra braces to indicate scope of key, obj below to compiler. Otherwise
+  // g++ complains that `goto` bypasses initializers.
   json_object_object_foreach(posix_accounts, key, val) {
     int val_type = json_object_get_type(val);
     // Convert char* to c++ string for easier comparison.

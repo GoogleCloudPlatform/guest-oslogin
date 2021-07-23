@@ -441,6 +441,7 @@ bool ParseJsonToUsers(const string& json, std::vector<string>* result) {
 
   json_object* users = NULL;
   if (!json_object_object_get_ex(root, "usernames", &users)) {
+    ret = true; // means no users, not invalid.
     goto cleanup;
   }
   if (json_object_get_type(users) != json_type_array) {
@@ -772,7 +773,7 @@ bool ParseJsonToEmail(const string& json, string* email) {
   if (!json_object_object_get_ex(login_profiles, "name", &json_email)) {
     goto cleanup;
   }
-
+  ret = true;
   *email = json_object_get_string(json_email);
 
 cleanup:
@@ -791,8 +792,9 @@ bool ParseJsonToSuccess(const string& json) {
     json_object_put(root);
     return false;
   }
+  bool ret = (bool)json_object_get_boolean(success);
   json_object_put(root);
-  return (bool)json_object_get_boolean(success);
+  return ret;
 }
 
 bool ParseJsonToKey(const string& json, const string& key, string* response) {

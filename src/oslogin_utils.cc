@@ -124,57 +124,78 @@ bool NssCache::GetNextGroup(BufferManager* buf, struct group* result, int* errno
 
 bool NssCache::LoadJsonUsersToCache(string response) {
   Reset();
+
   json_object* root = NULL;
   root = json_tokener_parse(response.c_str());
   if (root == NULL) {
     return false;
   }
+
+  bool ret = false;
+  int arraylen = 0;
+  json_object* login_profiles = NULL;
+
   // First grab the page token.
   json_object* page_token_object;
   if (json_object_object_get_ex(root, "nextPageToken", &page_token_object)) {
     page_token_ = json_object_get_string(page_token_object);
   } else {
-    return false;
+    goto cleanup;
   }
+
   // A page_token of 0 means we are done. This response will not contain any
   // login profiles.
   if (page_token_ == "0") {
     page_token_ = "";
     on_last_page_ = true;
-    return true;
+    ret = true;
+    goto cleanup;
   }
+
   // Now grab all of the loginProfiles.
-  json_object* login_profiles = NULL;
   if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
-    return false;
+    goto cleanup;
   }
+
   if (json_object_get_type(login_profiles) != json_type_array) {
-    return false;
+    goto cleanup;
   }
-  int arraylen = json_object_array_length(login_profiles);
+
+  arraylen = json_object_array_length(login_profiles);
   if (arraylen == 0 || arraylen > cache_size_) {
-    return false;
+    goto cleanup;
   }
+
   for (int i = 0; i < arraylen; i++) {
     json_object* profile = json_object_array_get_idx(login_profiles, i);
     entry_cache_.push_back(json_object_to_json_string_ext(profile, JSON_C_TO_STRING_PLAIN));
   }
-  return true;
+  ret = true;
+
+cleanup:
+  json_object_put(root);
+  return ret;
 }
 
 bool NssCache::LoadJsonGroupsToCache(string response) {
   Reset();
+
   json_object* root = NULL;
   root = json_tokener_parse(response.c_str());
   if (root == NULL) {
     return false;
   }
+
+  bool ret = false;
+  int arraylen = 0;
+  json_object* groups = NULL;
+
   // First grab the page token.
   json_object* page_token_object;
   if (json_object_object_get_ex(root, "nextPageToken", &page_token_object)) {
     page_token_ = json_object_get_string(page_token_object);
   } else {
-    return false;
+    goto cleanup;
   }
   // A page_token of 0 for groups is different than for users. This is the last
   // page, but it WILL contain groups.
@@ -182,22 +203,25 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
     on_last_page_ = true;
     page_token_ = "";
   }
-  json_object* groups = NULL;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
-    return false;
+    goto cleanup;
   }
   if (json_object_get_type(groups) != json_type_array) {
-    return false;
+    goto cleanup;
   }
-  int arraylen = json_object_array_length(groups);
+  arraylen = json_object_array_length(groups);
   if (arraylen == 0 || arraylen > cache_size_) {
-    return false;
+    goto cleanup;
   }
   for (int i = 0; i < arraylen; i++) {
     json_object* group = json_object_array_get_idx(groups, i);
     entry_cache_.push_back(json_object_to_json_string_ext(group, JSON_C_TO_STRING_PLAIN));
   }
-  return true;
+  ret = true;
+
+cleanup:
+  json_object_put(root);
+  return ret;
 }
 
 // Gets the next entry from the cache, refreshing as needed. Returns true if a
@@ -400,6 +424,7 @@ bool ValidatePasswd(struct passwd* result, BufferManager* buf, int* errnop) {
   if (!buf->AppendString("", &result->pw_gecos, errnop)) {
     return false;
   }
+
   return true;
 }
 
@@ -412,19 +437,25 @@ bool ParseJsonToUsers(const string& json, std::vector<string>* result) {
     return false;
   }
 
+  bool ret = false;
+
   json_object* users = NULL;
   if (!json_object_object_get_ex(root, "usernames", &users)) {
-    return true;
+    goto cleanup;
   }
   if (json_object_get_type(users) != json_type_array) {
-    return false;
+    goto cleanup;
   }
   for (int idx=0; idx < (int)json_object_array_length(users); idx++) {
     json_object* user = json_object_array_get_idx(users, idx);
     const char* username = json_object_get_string(user);
     result->push_back(string(username));
   }
-  return true;
+  ret = true;
+
+cleanup:
+  json_object_put(root);
+  return ret;
 }
 
 bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
@@ -434,28 +465,26 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     return false;
   }
 
+  bool ret = false;
+
   json_object* groups = NULL;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
-    json_object_put(root);
-    return false;
+    goto cleanup;
   }
   if (json_object_get_type(groups) != json_type_array) {
-    json_object_put(root);
-    return false;
+    goto cleanup;
   }
   for (int idx = 0; idx < (int)json_object_array_length(groups); idx++) {
     json_object* group = json_object_array_get_idx(groups, idx);
 
     json_object* gid;
     if (!json_object_object_get_ex(group, "gid", &gid)) {
-      json_object_put(root);
-      return false;
+      goto cleanup;
     }
 
     json_object* name;
     if (!json_object_object_get_ex(group, "name", &name)) {
-      json_object_put(root);
-      return false;
+      goto cleanup;
     }
 
     Group g;
@@ -463,74 +492,95 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
 
     // get_int64 will confusingly return 0 if the string can't be converted to
     // an integer. We can't rely on type check as it may be a string in the API.
+    // Also 0 is invalid because it creates a 'root group'.
     if (g.gid == 0) {
-      json_object_put(root);
-      return false;
+      goto cleanup;
     }
+
     g.name = json_object_get_string(name);
     if (g.name == "") {
-      json_object_put(root);
-      return false;
+      goto cleanup;
     }
 
     result->push_back(g);
   }
+  ret = true;
 
+cleanup:
   json_object_put(root);
-  return true;
+  return ret;
 }
 
-bool ParseJsonToGroup(const string& json, struct group* result, BufferManager* buf, int* errnop) {
+bool ParseJsonToGroup(const string& json, struct group* result, BufferManager*
+                      buf, int* errnop) {
+  *errnop = EINVAL;
+  int gr_gid = 65535;
+
   json_object* group = NULL;
   group = json_tokener_parse(json.c_str());
-  if (group== NULL) {
-    *errnop = EINVAL;
+  if (group == NULL) {
     return false;
   }
 
+  bool ret = false;
+
   json_object* gid;
   if (!json_object_object_get_ex(group, "gid", &gid)) {
-    *errnop = EINVAL;
-    return false;
+    goto cleanup;
   }
 
   json_object* name;
   if (!json_object_object_get_ex(group, "name", &name)) {
-    *errnop = EINVAL;
-    return false;
+    goto cleanup;
   }
 
-  result->gr_gid = json_object_get_int64(gid);
-  // TODO ValidateGroup
-  buf->AppendString("", &result->gr_passwd, errnop);
-  return buf->AppendString((char*)json_object_get_string(name), &result->gr_name, errnop);
+  if ((gr_gid = json_object_get_int64(gid)) == 0) {
+    goto cleanup;
+  }
+
+  result->gr_gid = gr_gid;
+  if (!buf->AppendString("", &result->gr_passwd, errnop))
+    goto cleanup;
+  if (!buf->AppendString((char*)json_object_get_string(name), &result->gr_name,
+                         errnop))
+    goto cleanup;
+
+  *errnop = 0;
+  ret = true;
+
+cleanup:
+  json_object_put(group);
+  return ret;
 }
 
 std::vector<string> ParseJsonToSshKeys(const string& json) {
   std::vector<string> result;
+  json_object* ssh_public_keys = NULL;
+
   json_object* root = NULL;
   root = json_tokener_parse(json.c_str());
   if (root == NULL) {
     return result;
   }
+
   // Locate the sshPublicKeys object.
   json_object* login_profiles = NULL;
   if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
-    return result;
+    goto cleanup;
   }
   if (json_object_get_type(login_profiles) != json_type_array) {
-    return result;
+    goto cleanup;
   }
   login_profiles = json_object_array_get_idx(login_profiles, 0);
 
-  json_object* ssh_public_keys = NULL;
   if (!json_object_object_get_ex(login_profiles, "sshPublicKeys", &ssh_public_keys)) {
-    return result;
+    goto cleanup;
   }
 
   if (json_object_get_type(ssh_public_keys) != json_type_object) {
-    return result;
+    goto cleanup;
   }
+  {
   json_object_object_foreach(ssh_public_keys, key, obj) {
     (void)(key);
     if (json_object_get_type(obj) != json_type_object) {
@@ -563,33 +613,42 @@ std::vector<string> ParseJsonToSshKeys(const string& json) {
       result.push_back(key_to_add);
     }
   }
+  }
+
+cleanup:
+  json_object_put(root);
   return result;
 }
 
 bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
                        buf, int* errnop) {
+  *errnop = EINVAL;
   json_object* root = NULL;
-  root = json_tokener_parse(json.c_str());
+  json_object* origroot = NULL;
+
+  origroot = root = json_tokener_parse(json.c_str());
   if (root == NULL) {
-    *errnop = EINVAL;
     return false;
   }
+
+  bool ret = false;
+  json_object* posix_accounts = NULL;
+
   json_object* login_profiles = NULL;
   // If this is called from getpwent_r, loginProfiles won't be in the response.
   if (json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
     if (json_object_get_type(login_profiles) != json_type_array) {
-      return false;
+      goto cleanup;
     }
+    // This overwrites root but we still have origroot for cleanup;
     root = json_object_array_get_idx(login_profiles, 0);
   }
   // Locate the posixAccounts object.
-  json_object* posix_accounts = NULL;
   if (!json_object_object_get_ex(root, "posixAccounts", &posix_accounts)) {
-    *errnop = EINVAL;
-    return false;
+    goto cleanup;
   }
   if (json_object_get_type(posix_accounts) != json_type_array) {
-    return false;
+    goto cleanup;
   }
   posix_accounts = json_object_array_get_idx(posix_accounts, 0);
 
@@ -603,9 +662,9 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
 
   // Iterate through the json response and populate the passwd struct.
   if (json_object_get_type(posix_accounts) != json_type_object) {
-    *errnop = EINVAL;
-    return false;
+    goto cleanup;
   }
+  {
   json_object_object_foreach(posix_accounts, key, val) {
     int val_type = json_object_get_type(val);
     // Convert char* to c++ string for easier comparison.
@@ -615,12 +674,10 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
       if (val_type == json_type_int || val_type == json_type_string) {
         result->pw_uid = (uint32_t)json_object_get_int64(val);
         if (result->pw_uid == 0) {
-          *errnop = EINVAL;
-          return false;
+          goto cleanup;
         }
       } else {
-        *errnop = EINVAL;
-        return false;
+        goto cleanup;
       }
     } else if (string_key == "gid") {
       if (val_type == json_type_int || val_type == json_type_string) {
@@ -630,40 +687,41 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
           result->pw_gid = result->pw_uid;
         }
       } else {
-        *errnop = EINVAL;
-        return false;
+        goto cleanup;
       }
     } else if (string_key == "username") {
       if (val_type != json_type_string) {
-        *errnop = EINVAL;
-        return false;
+        goto cleanup;
       }
       if (!buf->AppendString((char*)json_object_get_string(val),
                              &result->pw_name, errnop)) {
-        return false;
+        goto cleanup;
       }
     } else if (string_key == "homeDirectory") {
       if (val_type != json_type_string) {
-        *errnop = EINVAL;
-        return false;
+        goto cleanup;
       }
       if (!buf->AppendString((char*)json_object_get_string(val),
                              &result->pw_dir, errnop)) {
-        return false;
+        goto cleanup;
       }
     } else if (string_key == "shell") {
       if (val_type != json_type_string) {
-        *errnop = EINVAL;
-        return false;
+        goto cleanup;
       }
       if (!buf->AppendString((char*)json_object_get_string(val),
                              &result->pw_shell, errnop)) {
-        return false;
+        goto cleanup;
       }
     }
   }
+  }
+  *errnop = 0;
+  ret = ValidatePasswd(result, buf, errnop);
 
-  return ValidatePasswd(result, buf, errnop);
+cleanup:
+  json_object_put(origroot);
+  return ret;
 }
 
 bool AddUsersToGroup(std::vector<string> users, struct group* result,
@@ -698,26 +756,28 @@ bool ParseJsonToEmail(const string& json, string* email) {
   if (root == NULL) {
     return false;
   }
+
+  bool ret = false;
+  json_object* json_email = NULL;
+
   // Locate the email object.
   json_object* login_profiles = NULL;
   if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
-    json_object_put(root);
-    return false;
+    goto cleanup;
   }
   if (json_object_get_type(login_profiles) != json_type_array) {
-    json_object_put(root);
-    return false;
+    goto cleanup;
   }
   login_profiles = json_object_array_get_idx(login_profiles, 0);
-  json_object* json_email = NULL;
   if (!json_object_object_get_ex(login_profiles, "name", &json_email)) {
-    json_object_put(root);
-    return false;
+    goto cleanup;
   }
 
   *email = json_object_get_string(json_email);
+
+cleanup:
   json_object_put(root);
-  return true;
+  return ret;
 }
 
 bool ParseJsonToSuccess(const string& json) {
@@ -728,64 +788,71 @@ bool ParseJsonToSuccess(const string& json) {
   }
   json_object* success = NULL;
   if (!json_object_object_get_ex(root, "success", &success)) {
+    json_object_put(root);
     return false;
   }
+  json_object_put(root);
   return (bool)json_object_get_boolean(success);
 }
 
 bool ParseJsonToKey(const string& json, const string& key, string* response) {
   json_object* root = NULL;
-  json_object* json_response = NULL;
-  const char* c_response;
-
   root = json_tokener_parse(json.c_str());
   if (root == NULL) {
     return false;
   }
 
+  bool ret = false;
+  json_object* json_response = NULL;
+  const char* c_response = NULL;
+
+
   if (!json_object_object_get_ex(root, key.c_str(), &json_response)) {
     json_object_put(root);
-    return false;
+    goto cleanup;
   }
 
   if (!(c_response = json_object_get_string(json_response))) {
     json_object_put(root);
-    return false;
+    goto cleanup;
   }
 
-  // TODO: do we need json_object_put(json_response) ?
   *response = c_response;
-  json_object_put(root);
+  ret = true;
 
-  return true;
+cleanup:
+  json_object_put(root);
+  return ret;
 }
 
 bool ParseJsonToChallenges(const string& json, std::vector<Challenge>* challenges) {
   json_object* root = NULL;
-
   root = json_tokener_parse(json.c_str());
   if (root == NULL) {
     return false;
   }
 
+  bool ret = false;
+  json_object* challengeId = NULL;
+  json_object* challengeType = NULL;
+  json_object* challengeStatus = NULL;
   json_object* jsonChallenges = NULL;
   if (!json_object_object_get_ex(root, "challenges", &jsonChallenges)) {
-    return false;
+    goto cleanup;
   }
 
-  json_object *challengeId, *challengeType, *challengeStatus = NULL;
   for (int i = 0; i < (int)json_object_array_length(jsonChallenges); ++i) {
     if (!json_object_object_get_ex(json_object_array_get_idx(jsonChallenges, i),
                                    "challengeId", &challengeId)) {
-      return false;
+      goto cleanup;
     }
     if (!json_object_object_get_ex(json_object_array_get_idx(jsonChallenges, i),
                                    "challengeType", &challengeType)) {
-      return false;
+      goto cleanup;
     }
     if (!json_object_object_get_ex(json_object_array_get_idx(jsonChallenges, i),
                                    "status", &challengeStatus)) {
-      return false;
+      goto cleanup;
     }
     Challenge challenge;
     challenge.id = json_object_get_int(challengeId);
@@ -794,8 +861,11 @@ bool ParseJsonToChallenges(const string& json, std::vector<Challenge>* challenge
 
     challenges->push_back(challenge);
   }
+  ret = true;
 
-  return true;
+cleanup:
+  json_object_put(root);
+  return ret;
 }
 
 // ----------------- OS Login functions -----------------
@@ -959,7 +1029,8 @@ bool GetUser(const string& username, string* response) {
 
 bool StartSession(const string& email, string* response) {
   bool ret = true;
-  struct json_object *jobj, *jarr;
+  json_object* jobj = NULL;
+  json_object* jarr = NULL;
 
   jarr = json_object_new_array();
   json_object_array_add(jarr, json_object_new_string(INTERNAL_TWO_FACTOR));
@@ -991,7 +1062,8 @@ bool StartSession(const string& email, string* response) {
 
 bool ContinueSession(bool alt, const string& email, const string& user_token, const string& session_id, const Challenge& challenge, string* response) {
   bool ret = true;
-  struct json_object *jobj, *jresp;
+  json_object* jobj = NULL;
+  json_object* jresp = NULL;
 
   jobj = json_object_new_object();
   json_object_object_add(jobj, "email", json_object_new_string(email.c_str()));

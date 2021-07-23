@@ -26,7 +26,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
-#include "json_object.h"
+#include <json_object.h>
 
 #if defined(__clang__) || __GNUC__ > 4 || \
     (__GNUC__ == 4 &&                     \
@@ -436,9 +436,11 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
 
   json_object* groups = NULL;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
+    json_object_put(root);
     return false;
   }
   if (json_object_get_type(groups) != json_type_array) {
+    json_object_put(root);
     return false;
   }
   for (int idx = 0; idx < (int)json_object_array_length(groups); idx++) {
@@ -446,11 +448,13 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
 
     json_object* gid;
     if (!json_object_object_get_ex(group, "gid", &gid)) {
+      json_object_put(root);
       return false;
     }
 
     json_object* name;
     if (!json_object_object_get_ex(group, "name", &name)) {
+      json_object_put(root);
       return false;
     }
 
@@ -460,15 +464,19 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     // get_int64 will confusingly return 0 if the string can't be converted to
     // an integer. We can't rely on type check as it may be a string in the API.
     if (g.gid == 0) {
+      json_object_put(root);
       return false;
     }
     g.name = json_object_get_string(name);
     if (g.name == "") {
+      json_object_put(root);
       return false;
     }
 
     result->push_back(g);
   }
+
+  json_object_put(root);
   return true;
 }
 
@@ -693,18 +701,22 @@ bool ParseJsonToEmail(const string& json, string* email) {
   // Locate the email object.
   json_object* login_profiles = NULL;
   if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
+    json_object_put(root);
     return false;
   }
   if (json_object_get_type(login_profiles) != json_type_array) {
+    json_object_put(root);
     return false;
   }
   login_profiles = json_object_array_get_idx(login_profiles, 0);
   json_object* json_email = NULL;
   if (!json_object_object_get_ex(login_profiles, "name", &json_email)) {
+    json_object_put(root);
     return false;
   }
 
   *email = json_object_get_string(json_email);
+  json_object_put(root);
   return true;
 }
 
@@ -732,14 +744,19 @@ bool ParseJsonToKey(const string& json, const string& key, string* response) {
   }
 
   if (!json_object_object_get_ex(root, key.c_str(), &json_response)) {
+    json_object_put(root);
     return false;
   }
 
   if (!(c_response = json_object_get_string(json_response))) {
+    json_object_put(root);
     return false;
   }
 
+  // TODO: do we need json_object_put(json_response) ?
   *response = c_response;
+  json_object_put(root);
+
   return true;
 }
 

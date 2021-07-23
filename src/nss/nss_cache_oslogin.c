@@ -72,6 +72,10 @@ static inline enum nss_status _nss_cache_oslogin_ent_bad_return_code(
 
 static enum nss_status _nss_cache_oslogin_setpwent_locked(void) {
   DEBUG("%s %s\n", "Opening", OSLOGIN_PASSWD_CACHE_PATH);
+  if (p_file) {
+    fclose(p_file);
+  }
+
   p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
 
   if (p_file) {
@@ -208,7 +212,10 @@ enum nss_status _nss_cache_oslogin_getpwnam_r(const char *name,
 // Internal setup routine
 
 static enum nss_status _nss_cache_oslogin_setgrent_locked(void) {
-  DEBUG("%s %s\n", "Opening", OSLOGIN_GROUP_CACHE_PATH);
+  if (g_file) {
+    fclose(g_file);
+  }
+
   g_file = fopen(OSLOGIN_GROUP_CACHE_PATH, "re");
 
   if (g_file) {

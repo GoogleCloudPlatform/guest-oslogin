@@ -119,15 +119,20 @@ enum nss_status getselfgrgid(gid_t gid, struct group *grp,
         memset(grp, 0, sizeof(struct group));
 
         // Copy from userbuf to user-provided buffer.
-        if (!buffer_manager.AppendString(user.pw_name, &grp->gr_name, errnop))
+        if (!buffer_manager.AppendString(user.pw_name, &grp->gr_name, errnop)) {
+          fclose(p_file);
           return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+        }
 
         // Add user to group.
         std::vector<string> members;
         members.push_back(string(user.pw_name));
-        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop))
+        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop)) {
+          fclose(p_file);
           return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+        }
 
+        fclose(p_file);
         return NSS_STATUS_SUCCESS;
       }
     }
@@ -187,9 +192,12 @@ enum nss_status getselfgrnam(const char* name, struct group *grp,
         // Add user to group.
         std::vector<string> members;
         members.push_back(string(name));
-        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop))
+        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop)) {
+          fclose(p_file);
           return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+        }
 
+        fclose(p_file);
         return NSS_STATUS_SUCCESS;
       }
     }

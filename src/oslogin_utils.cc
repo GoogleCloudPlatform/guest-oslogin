@@ -542,7 +542,7 @@ bool ParseJsonToGroup(const string& json, struct group* result, BufferManager*
   result->gr_gid = gr_gid;
   if (!buf->AppendString("", &result->gr_passwd, errnop))
     goto cleanup;
-  if (!buf->AppendString((char*)json_object_get_string(name), &result->gr_name,
+  if (!buf->AppendString(json_object_get_string(name), &result->gr_name,
                          errnop))
     goto cleanup;
 
@@ -599,7 +599,7 @@ std::vector<string> ParseJsonToSshKeys(const string& json) {
         if (val_type != json_type_string) {
           continue;
         }
-        key_to_add = (char*)json_object_get_string(val);
+        key_to_add = json_object_get_string(val);
       }
       if (string_key == "expirationTimeUsec") {
         if (val_type == json_type_int || val_type == json_type_string) {
@@ -617,6 +617,62 @@ std::vector<string> ParseJsonToSshKeys(const string& json) {
       result.push_back(key_to_add);
     }
   }
+  }
+
+cleanup:
+  json_object_put(root);
+  return result;
+}
+
+std::vector<string> ParseJsonToSshKeysSk(const string& json) {
+  std::vector<string> result;
+  json_object* security_keys = NULL;
+
+  json_object* root = NULL;
+  root = json_tokener_parse(json.c_str());
+  if (root == NULL) {
+    return result;
+  }
+
+  // Locate the securityKeys array.
+  json_object* login_profiles = NULL;
+  if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
+    goto cleanup;
+  }
+  if (json_object_get_type(login_profiles) != json_type_array) {
+    goto cleanup;
+  }
+
+  login_profiles = json_object_array_get_idx(login_profiles, 0);
+
+  if (!json_object_object_get_ex(login_profiles, "securityKeys", &security_keys)) {
+    goto cleanup;
+  }
+  if (json_object_get_type(security_keys) != json_type_array) {
+    goto cleanup;
+  }
+
+  {
+    size_t number_of_keys = 0;
+    size_t idx;
+    json_object* security_key = NULL;
+    json_object* public_key = NULL;
+    string key_to_add = "";
+
+    number_of_keys = json_object_array_length(security_keys);
+    for (idx = 0; idx < number_of_keys; idx++) {
+      security_key = json_object_array_get_idx(security_keys, idx);
+      if (json_object_get_type(security_key) != json_type_object) {
+        goto cleanup;
+      }
+      if (!json_object_object_get_ex(security_key, "publicKey", &public_key)) {
+        goto cleanup;
+      }
+
+      key_to_add = json_object_get_string(public_key);
+      result.push_back(key_to_add);
+      key_to_add.clear();
+    }
   }
 
 cleanup:
@@ -699,7 +755,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
       if (val_type != json_type_string) {
         goto cleanup;
       }
-      if (!buf->AppendString((char*)json_object_get_string(val),
+      if (!buf->AppendString(json_object_get_string(val),
                              &result->pw_name, errnop)) {
         goto cleanup;
       }
@@ -707,7 +763,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
       if (val_type != json_type_string) {
         goto cleanup;
       }
-      if (!buf->AppendString((char*)json_object_get_string(val),
+      if (!buf->AppendString(json_object_get_string(val),
                              &result->pw_dir, errnop)) {
         goto cleanup;
       }
@@ -715,7 +771,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
       if (val_type != json_type_string) {
         goto cleanup;
       }
-      if (!buf->AppendString((char*)json_object_get_string(val),
+      if (!buf->AppendString(json_object_get_string(val),
                              &result->pw_shell, errnop)) {
         goto cleanup;
       }

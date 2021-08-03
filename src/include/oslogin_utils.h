@@ -247,6 +247,7 @@ bool ParseJsonToUsers(const string& json, std::vector<string> *users);
 // ssh_keys. A key is considered valid if it's expiration date is greater than
 // current unix time.
 std::vector<string> ParseJsonToSshKeys(const string& json);
+std::vector<string> ParseJsonToSshKeysSk(const string& json);
 
 // Parses a JSON object and returns the value associated with a given key.
 bool ParseJsonToKey(const string& json, const string& key, string* response);

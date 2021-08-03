@@ -30,7 +30,7 @@ NSS_CACHE_OSLOGIN        = libnss_cache_oslogin-$(VERSION).so
 PAM_LOGIN                = pam_oslogin_login.so
 PAM_ADMIN                = pam_oslogin_admin.so
 
-BINARIES = google_oslogin_nss_cache google_authorized_keys
+BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk
 
 all : $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN) $(PAM_LOGIN) $(PAM_ADMIN) $(BINARIES)
 
@@ -61,6 +61,9 @@ $(PAM_ADMIN) : pam/pam_oslogin_admin.o oslogin_utils.o
 # Utilities.
 
 google_authorized_keys : authorized_keys/authorized_keys.o oslogin_utils.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
+
+google_authorized_keys_sk : authorized_keys/authorized_keys_sk.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 google_oslogin_nss_cache: cache_refresh/cache_refresh.o oslogin_utils.o

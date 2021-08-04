@@ -73,6 +73,7 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 /%{_lib}/security/pam_oslogin_admin.so
 /%{_lib}/security/pam_oslogin_login.so
 /usr/bin/google_authorized_keys
+/usr/bin/google_authorized_keys_sk
 /usr/bin/google_oslogin_control
 /usr/bin/google_oslogin_nss_cache
 /usr/share/selinux/packages/oslogin.pp

@@ -871,12 +871,10 @@ bool ParseJsonToKey(const string& json, const string& key, string* response) {
 
 
   if (!json_object_object_get_ex(root, key.c_str(), &json_response)) {
-    json_object_put(root);
     goto cleanup;
   }
 
   if (!(c_response = json_object_get_string(json_response))) {
-    json_object_put(root);
     goto cleanup;
   }
 

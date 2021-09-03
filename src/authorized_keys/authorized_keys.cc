@@ -16,6 +16,8 @@
 #include <sstream>
 #include <string>
 
+#include <signal.h>
+
 #include <oslogin_utils.h>
 
 using std::cout;
@@ -24,15 +26,23 @@ using std::string;
 
 using oslogin_utils::HttpGet;
 using oslogin_utils::ParseJsonToSuccess;
-using oslogin_utils::ParseJsonToKey;
 using oslogin_utils::ParseJsonToEmail;
 using oslogin_utils::ParseJsonToSshKeys;
 using oslogin_utils::UrlEncode;
 using oslogin_utils::kMetadataServerUrl;
 
+void sigpipe_handler(int signo) {
+  // exit 0 so SSHD can use what we've already written out.
+  exit(0);
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     cout << "usage: authorized_keys [username]" << endl;
+    return 1;
+  }
+  if (signal(SIGPIPE, sigpipe_handler) == SIG_ERR) {
+    cout << "Unable to add SIGPIPE handler, exiting" << endl;
     return 1;
   }
   std::stringstream url;
@@ -44,6 +54,7 @@ int main(int argc, char* argv[]) {
     if (http_code == 404) {
       // Return 0 if the user is not an oslogin user. If we returned a failure
       // code, we would populate auth.log with useless error messages.
+      // This exits successfully but prints no keys.
       return 0;
     }
     return 1;

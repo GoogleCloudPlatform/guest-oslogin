@@ -34,7 +34,7 @@ using oslogin_utils::kMetadataServerUrl;
 
 void sigpipe_handler(int signo) {
   // exit 0 so SSHD can use what we've already written out.
-  exit(0);
+  _Exit(0);
 }
 
 int main(int argc, char* argv[]) {

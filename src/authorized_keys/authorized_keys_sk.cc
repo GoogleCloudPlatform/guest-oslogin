@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include <signal.h>
 #include <string.h>
 
 #include <oslogin_utils.h>
@@ -31,9 +34,23 @@ using oslogin_utils::ParseJsonToSshKeysSk;
 using oslogin_utils::UrlEncode;
 using oslogin_utils::kMetadataServerUrl;
 
+void sigpipe_handler(int signo) {
+  // exit 0 so SSHD can use what we've already written out.
+  _Exit(0);
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     cout << "usage: authorized_keys_sk [username]" << endl;
+    return 1;
+  }
+
+  struct sigaction newact;
+  newact.sa_handler = sigpipe_handler;
+  sigemptyset(&newact.sa_mask);
+  newact.sa_flags = 0;
+  if (sigaction(SIGPIPE, &newact, NULL) == -1) {
+    cout << "Unable to add SIGPIPE handler, exiting" << endl;
     return 1;
   }
 

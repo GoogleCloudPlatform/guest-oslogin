@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <cstdlib>
 
 #include <signal.h>
 
@@ -34,7 +34,7 @@ using oslogin_utils::kMetadataServerUrl;
 
 void sigpipe_handler(int signo) {
   // exit 0 so SSHD can use what we've already written out.
-  exit(0);
+  _Exit(0);
 }
 
 int main(int argc, char* argv[]) {
@@ -42,10 +42,16 @@ int main(int argc, char* argv[]) {
     cout << "usage: authorized_keys [username]" << endl;
     return 1;
   }
-  if (signal(SIGPIPE, sigpipe_handler) == SIG_ERR) {
+
+  struct sigaction newact;
+  newact.sa_handler = sigpipe_handler;
+  sigemptyset(&newact.sa_mask);
+  newact.sa_flags = 0;
+  if (sigaction(SIGPIPE, &newact, NULL) == -1) {
     cout << "Unable to add SIGPIPE handler, exiting" << endl;
     return 1;
   }
+
   std::stringstream url;
   url << kMetadataServerUrl << "users?username=" << UrlEncode(argv[1]);
   string user_response;

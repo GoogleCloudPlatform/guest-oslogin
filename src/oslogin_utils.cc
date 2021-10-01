@@ -177,8 +177,9 @@ cleanup:
   return ret;
 }
 
-bool NssCache::LoadJsonGroupsToCache(string response) {
+bool NssCache::LoadJsonGroupsToCache(string response, int* errnop) {
   Reset();
+  *errnop = ENOENT;
 
   json_object* root = NULL;
   root = json_tokener_parse(response.c_str());
@@ -198,12 +199,14 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
     goto cleanup;
   }
   // A page_token of 0 for groups is different than for users. This is the last
-  // page, but it WILL contain groups.
+  // page, but it WILL contain groups if there are any.
   if (page_token_ == "0") {
     on_last_page_ = true;
     page_token_ = "";
   }
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
+    // Valid JSON but no groups, set ENOMSG as a 'no groups' code.
+    *errnop = ENOMSG;
     goto cleanup;
   }
   if (json_object_get_type(groups) != json_type_array) {
@@ -218,6 +221,7 @@ bool NssCache::LoadJsonGroupsToCache(string response) {
     entry_cache_.push_back(json_object_to_json_string_ext(group, JSON_C_TO_STRING_PLAIN));
   }
   ret = true;
+  *errnop = 0;
 
 cleanup:
   json_object_put(root);
@@ -285,9 +289,13 @@ bool NssCache::NssGetgrentHelper(BufferManager* buf, struct group* result, int* 
       *errnop = ENOMSG;
       return false;
     }
-    // General failure to load the cache occurred.
-    if (!status || http_code != 200 || response.empty() || !LoadJsonGroupsToCache(response)) {
+    // Failed to make the request or empty response.
+    if (!status || http_code != 200 || response.empty()) {
       *errnop = ENOENT;
+      return false;
+    }
+    // General failure to load the cache occurred.
+    if (!LoadJsonGroupsToCache(response, errnop)) {
       return false;
     }
   }

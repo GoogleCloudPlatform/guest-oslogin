@@ -121,7 +121,7 @@ class NssCache {
   // response is expected to be a JSON array of passwd or group entries. Returns
   // true on success.
   bool LoadJsonUsersToCache(string response);
-  bool LoadJsonGroupsToCache(string response);
+  bool LoadJsonGroupsToCache(string response, int* errnop);
 
   // Helper method for get(pw|gr)ent nss methods. Each call will iterate through the
   // OsLogin database and return the next entry.  Internally, the cache will

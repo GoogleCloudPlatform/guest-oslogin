@@ -33,8 +33,6 @@ The OS Login Guest Environment consists of the following main components:
 
 In addition to the main components, there are also the following utilities:
 
-*   **google_oslogin_control** is a shell script for activating/deactivating the
-    OS Login components.
 *   **google_oslogin_nss_cache** is a utility for updating the local user and
     group cache.
 *   **selinux** contains SELinux policy definition files and a compiled policy

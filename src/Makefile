@@ -81,8 +81,6 @@ install: all
 	ln -sf $(NSS_CACHE_OSLOGIN)   $(DESTDIR)$(LIBDIR)/$(NSS_CACHE_OSLOGIN_SONAME)
 	# PAM modules
 	install -m 0644 -t $(DESTDIR)$(PAMDIR) $(PAM_ADMIN) $(PAM_LOGIN)
-	# Control file
-	install -m 0755 -t $(DESTDIR)$(BINDIR) $(BINARIES) $(TOPDIR)/google_oslogin_control
 	# Manpages
 	install -m 0644 -t $(DESTDIR)$(MANDIR)/man8 $(TOPDIR)/man/nss-oslogin.8 $(TOPDIR)/man/nss-cache-oslogin.8
 	gzip -9 $(DESTDIR)$(MANDIR)/man8/nss-oslogin.8

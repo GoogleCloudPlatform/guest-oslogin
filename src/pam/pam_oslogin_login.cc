@@ -223,6 +223,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
   if (challenge.status != "READY") {
     // Call continueSession with the START_ALTERNATE flag.
     if (!ContinueSession(true, email, "", session_id, challenge, &response)) {
+
+      // TODO: can we get a rejectionReason here?
       PAM_SYSLOG(pamh, LOG_ERR,
                  "Bad response from two-factor continue session request: %s",
                  response.empty() ? "empty response" : response.c_str());
@@ -279,6 +281,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
   if (!ParseJsonToKey(response, "status", &status)
       || status != "AUTHENTICATED") {
+    if (ParseJsonToKey(response, "rejectionReason", &status) && !status.empty())
+      pam_error(pamh, status.c_str());
     return PAM_PERM_DENIED;
   }
 

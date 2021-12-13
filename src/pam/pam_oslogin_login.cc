@@ -279,8 +279,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags,
 
   if (!ParseJsonToKey(response, "status", &status)
       || status != "AUTHENTICATED") {
-    if (ParseJsonToKey(response, "rejectionReason", &status) && !status.empty())
+    if (ParseJsonToKey(response, "rejectionReason", &status) && !status.empty()) {
       pam_error(pamh, status.c_str());
+    }
     return PAM_PERM_DENIED;
   }
 

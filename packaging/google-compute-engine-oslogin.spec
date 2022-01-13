@@ -33,12 +33,7 @@ BuildRequires:  libcurl-devel
 BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
 BuildRequires:  policycoreutils
-
-%if 0%{?rhel} == 6
-Requires: crontabs
-%else
 BuildRequires: systemd
-%endif
 
 Requires: boost-regex
 Requires: json-c
@@ -58,11 +53,7 @@ make %{?_smp_mflags} LDLIBS="-lcurl -ljson-c -lboost_regex"
 
 %install
 rm -rf %{buildroot}
-%if 0%{?rhel} == 6
-make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y INSTALL_CRON=y
-%else
 make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y
-%endif
 
 %files
 %doc
@@ -89,7 +80,6 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 %endif
 
 %post
-%if 0%{?rhel} != 6
 if [ $1 -eq 1 ]; then
   # Initial installation
   systemctl enable google-oslogin-cache.timer >/dev/null 2>&1 || :
@@ -99,15 +89,8 @@ if [ $1 -eq 1 ]; then
     systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
   fi
 fi
-%endif
 
 /sbin/ldconfig
-if [ $1 -gt 1 ]; then  # This is an upgrade.
-  if semodule -l | grep -qi oslogin.el6; then
-    echo "Removing old SELinux module for OS Login."
-    semodule -r oslogin.el6
-  fi
-fi
 
 echo "Installing SELinux module for OS Login."
 semodule -i /usr/share/selinux/packages/oslogin.pp
@@ -115,10 +98,8 @@ if [ -e /var/google-sudoers.d ]; then
   restorecon -r /var/google-sudoers.d
 fi
 
-%if 0%{?rhel} != 6
 %preun
 %systemd_preun google-oslogin-cache.timer
-%endif
 
 # This is only relevant on EL7.
 %if 0%{?rhel} == 7

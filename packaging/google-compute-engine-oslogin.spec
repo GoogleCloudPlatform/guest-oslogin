@@ -122,7 +122,7 @@ fi
 
 %postun
 %if 0%{?rhel} != 6
-%systemd_postun
+%systemd_postun google-oslogin-cache.timer
 %endif
 
 /sbin/ldconfig

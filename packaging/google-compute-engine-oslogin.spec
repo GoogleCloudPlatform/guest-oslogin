@@ -121,8 +121,8 @@ fi
 %endif
 
 %postun
-%if 0%{?rhel} != 6
-%systemd_postun google-oslogin-cache.timer
+%if 0%{?rhel} == 7 # This is only relevant on EL7.
+%systemd_postun
 %endif
 
 /sbin/ldconfig

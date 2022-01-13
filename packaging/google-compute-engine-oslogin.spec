@@ -71,13 +71,9 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 %{_mandir}/man8/libnss_oslogin.so.2.8.gz
 %{_mandir}/man8/nss-cache-oslogin.8.gz
 %{_mandir}/man8/libnss_cache_oslogin.so.2.8.gz
-%if 0%{?rhel} == 6
-%config(noreplace) /etc/cron.d/%{name}
-%else
 /lib/systemd/system/google-oslogin-cache.service
 /lib/systemd/system/google-oslogin-cache.timer
 /lib/systemd/system-preset/90-google-compute-engine-oslogin.preset
-%endif
 
 %post
 if [ $1 -eq 1 ]; then

@@ -115,13 +115,14 @@ if [ -e /var/google-sudoers.d ]; then
   restorecon -r /var/google-sudoers.d
 fi
 
-%preun
 %if 0%{?rhel} != 6
+%preun
 %systemd_preun google-oslogin-cache.timer
 %endif
 
+# This is only relevant on EL7.
+%if 0%{?rhel} == 7
 %postun
-%if 0%{?rhel} == 7 # This is only relevant on EL7.
 %systemd_postun
 %endif
 

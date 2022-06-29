@@ -30,7 +30,7 @@ BuildRequires:  boost-devel
 BuildRequires:  gcc-c++
 BuildRequires:  make
 BuildRequires:  libcurl-devel
-BuildRequires:  json-c-devel = 0.13.1-2%{dist}
+BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
 BuildRequires:  policycoreutils
 BuildRequires: systemd
@@ -44,11 +44,15 @@ This package contains several libraries and changes to enable OS Login functiona
 for Google Compute Engine.
 
 %global debug_package %{nil}
+%global _use_internal_dependency_generator 0
+%global __find_requires_orig %{__find_requires}
+%define __find_requires %{_builddir}/%{?buildsubdir}/find-requires %{__find_requires_orig}
 
 %prep
 %setup
 
 %build
+chmod +x find-requires
 make %{?_smp_mflags} LDLIBS="-lcurl -ljson-c -lboost_regex"
 
 %install

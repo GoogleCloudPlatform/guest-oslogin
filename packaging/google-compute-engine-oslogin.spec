@@ -30,7 +30,7 @@ BuildRequires:  boost-devel
 BuildRequires:  gcc-c++
 BuildRequires:  make
 BuildRequires:  libcurl-devel
-BuildRequires:  json-c-devel
+BuildRequires:  json-c-devel = 0.13.1-2%{dist}
 BuildRequires:  pam-devel
 BuildRequires:  policycoreutils
 BuildRequires: systemd

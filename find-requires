@@ -1,0 +1,16 @@
+#!/usr/bin/perl -w
+use strict;
+use IPC::Open2;
+
+# This quick script will run the native find-requires (first parameter)
+# and then strip out packages we don't want listed.
+
+open2(\*IN, \*OUT, @ARGV);
+print OUT while (<STDIN>);
+close(OUT);
+my $list = join('', <IN>);
+
+# Apply my filter(s):
+$list =~ s/^.*JSONC.*//mg;
+
+print $list;

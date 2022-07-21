@@ -11,11 +11,8 @@ Cloud OS Login features on Google Compute Engine instances.
     * [NSS Modules](#nss-modules)
     * [PAM Modules](#pam-modules)
 * [Utilities](#Utilities)
-    * [Control Script](#control-script)
     * [SELinux Policy](#selinux-policy)
 * [Source Packages](#source-packages)
-    * [DEB](#deb)
-    * [RPM](#rpm)
 
 ## Overview
 
@@ -136,21 +133,6 @@ This module:
 
 ## Utilities
 
-#### Control Script
-
-The `google_oslogin_control` shell script activates or deactivates the OS Login
-features. It is invoked by the google accounts daemon. The control file performs
-the following tasks:
-
-*   Adds (or removes) AuthorizedKeysCommand and AuthorizedKeysCommandUser lines
-    to (from) `sshd_config` and restarts sshd.
-*   Adds (or removes) `oslogin` and `cache_oslogin` to (from) `nsswitch.conf`.
-*   Adds (or removes) the `account` entries to (from) the PAM sshd config. Also
-    adds (or removes) the `pam_mkhomedir.so` module to automatically create the
-    home directory for an OS Login user.
-*   Creates (or deletes) the `/var/google-sudoers.d/` directory, and a file
-    called `google-oslogin` in `/etc/sudoers.d/` that includes the directory.
-
 #### SELinux Policy
 
 The `selinux` directory contains `.te` (type enforcement) and `.fc` (file
@@ -167,54 +149,3 @@ There is currently support for creating packages for the following distros:
 *   CentOS/RHEL 7
 
 Files for these packages are in the `packaging/` directory.
-
-#### DEB
-
-_Note: the `packaging/setup_deb.sh` script performs these steps, but is not
-production quality._
-
-1.  Install build dependencies:
-    ```
-    sudo apt-get -y install make g++ libcurl4-openssl-dev libjson-c-dev libpam-dev
-    ```
-1.  Install deb creation tools:
-    ```
-    sudo apt-get -y install debhelper devscripts build-essential
-    ```
-1.  Create a compressed tar file named
-    `google-compute-engine-oslogin_M.M.R.orig.tar.gz` using the files in this
-    directory, excluding the `packaging` directory (where M.M.R is the version
-    number).
-1.  In a separate directory, extract the `.orig.tar.gz` file and copy the
-    `debian` directory into the top level.
-1.  To build the package, run the command
-    ```
-    debuild -us -uc
-    ```
-
-#### RPM
-
-_Note: the `packaging/setup_rpm.sh` script performs these steps, but is not
-production quality._
-
-1.  Install build dependencies:
-    ```
-    sudo yum -y install make gcc-c++ libcurl-devel json-c json-c-devel pam-devel policycoreutils-python
-    ```
-1.  Install rpm creation tools:
-    ```
-    sudo yum -y install rpmdevtools
-    ```
-1.  Create a compressed tar file named
-    `google-compute-engine-oslogin_M.M.R.orig.tar.gz` using the files in this
-    directory, excluding the `packaging` directory (where M.M.R is the version
-    number).
-1.  In a separate location, create a directory called `rpmbuild` and a
-    subdirectory called `SOURCES`. Copy the `.orig.tar.gz` file into the
-    `SOURCES` directory.
-1.  Copy the `SPECS` directory from the `rpmbuild` directory here into the
-    `rpmbuild` directory you created.
-1.  To build the package, run the command:
-    ```
-    rpmbuild --define "_topdir /path/to/rpmbuild" -ba /path/to/rpmbuild/SPECS/google-compute-engine-oslogin.spec
-    ```

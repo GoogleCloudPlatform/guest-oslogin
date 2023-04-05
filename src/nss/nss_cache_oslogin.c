@@ -46,8 +46,8 @@ extern int fgetgrent_r(FILE *, struct group *, char *, size_t, struct group **);
  * so that our caller knows to try again with a bigger buffer.
  */
 
-static inline enum nss_status _nss_cache_oslogin_ent_bad_return_code(
-    int errnoval) {
+static inline enum nss_status
+_nss_cache_oslogin_ent_bad_return_code(int errnoval) {
   enum nss_status ret;
 
   switch (errnoval) {
@@ -70,7 +70,8 @@ static inline enum nss_status _nss_cache_oslogin_ent_bad_return_code(
 // _nss_cache_oslogin_setpwent_locked()
 // Internal setup routine
 
-static enum nss_status _nss_cache_oslogin_setpwent_locked(void) {
+static enum nss_status
+_nss_cache_oslogin_setpwent_locked(void) {
   DEBUG("%s %s\n", "Opening", OSLOGIN_PASSWD_CACHE_PATH);
   if (p_file) {
     fclose(p_file);
@@ -89,7 +90,8 @@ static enum nss_status _nss_cache_oslogin_setpwent_locked(void) {
 // Called by NSS to open the passwd file
 // 'stayopen' parameter is ignored.
 
-enum nss_status _nss_cache_oslogin_setpwent(int stayopen) {
+enum nss_status
+_nss_cache_oslogin_setpwent(int stayopen) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
   ret = _nss_cache_oslogin_setpwent_locked();
@@ -100,7 +102,8 @@ enum nss_status _nss_cache_oslogin_setpwent(int stayopen) {
 // _nss_cache_oslogin_endpwent_locked()
 // Internal close routine
 
-static enum nss_status _nss_cache_oslogin_endpwent_locked(void) {
+static enum nss_status
+_nss_cache_oslogin_endpwent_locked(void) {
   DEBUG("Closing %s\n", OSLOGIN_PASSWD_CACHE_PATH);
   if (p_file) {
     fclose(p_file);
@@ -112,7 +115,8 @@ static enum nss_status _nss_cache_oslogin_endpwent_locked(void) {
 // _nss_cache_oslogin_endpwent()
 // Called by NSS to close the passwd file
 
-enum nss_status _nss_cache_oslogin_endpwent(void) {
+enum nss_status
+_nss_cache_oslogin_endpwent(void) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
   ret = _nss_cache_oslogin_endpwent_locked();
@@ -123,8 +127,9 @@ enum nss_status _nss_cache_oslogin_endpwent(void) {
 // _nss_cache_oslogin_getpwent_r_locked()
 // Called internally to return the next entry from the passwd file
 
-static enum nss_status _nss_cache_oslogin_getpwent_r_locked(
-    struct passwd *result, char *buffer, size_t buflen, int *errnop) {
+static enum nss_status
+_nss_cache_oslogin_getpwent_r_locked(struct passwd *result, char *buffer,
+                                     size_t buflen, int *errnop) {
   enum nss_status ret = NSS_STATUS_SUCCESS;
 
   if (p_file == NULL) {
@@ -150,9 +155,9 @@ static enum nss_status _nss_cache_oslogin_getpwent_r_locked(
 // _nss_cache_oslogin_getpwent_r()
 // Called by NSS to look up next entry in passwd file
 
-enum nss_status _nss_cache_oslogin_getpwent_r(struct passwd *result,
-                                              char *buffer, size_t buflen,
-                                              int *errnop) {
+enum nss_status
+_nss_cache_oslogin_getpwent_r(struct passwd *result,
+                              char *buffer, size_t buflen, int *errnop) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
   ret = _nss_cache_oslogin_getpwent_r_locked(result, buffer, buflen, errnop);
@@ -163,9 +168,9 @@ enum nss_status _nss_cache_oslogin_getpwent_r(struct passwd *result,
 // _nss_cache_oslogin_getpwuid_r()
 // Find a user account by uid
 
-enum nss_status _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
-                                              char *buffer, size_t buflen,
-                                              int *errnop) {
+enum nss_status
+_nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
+                              char *buffer, size_t buflen, int *errnop) {
   enum nss_status ret;
 
   NSS_CACHE_OSLOGIN_LOCK();
@@ -187,10 +192,9 @@ enum nss_status _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
 // _nss_cache_oslogin_getpwnam_r()
 // Find a user account by name
 
-enum nss_status _nss_cache_oslogin_getpwnam_r(const char *name,
-                                              struct passwd *result,
-                                              char *buffer, size_t buflen,
-                                              int *errnop) {
+enum nss_status
+_nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
+                              char *buffer, size_t buflen, int *errnop) {
   enum nss_status ret;
 
   NSS_CACHE_OSLOGIN_LOCK();
@@ -211,7 +215,8 @@ enum nss_status _nss_cache_oslogin_getpwnam_r(const char *name,
 // _nss_cache_oslogin_setgrent_locked()
 // Internal setup routine
 
-static enum nss_status _nss_cache_oslogin_setgrent_locked(void) {
+static enum nss_status
+_nss_cache_oslogin_setgrent_locked(void) {
   if (g_file) {
     fclose(g_file);
   }
@@ -229,7 +234,8 @@ static enum nss_status _nss_cache_oslogin_setgrent_locked(void) {
 // Called by NSS to open the group file
 // 'stayopen' parameter is ignored.
 
-enum nss_status _nss_cache_oslogin_setgrent(int stayopen) {
+enum nss_status
+_nss_cache_oslogin_setgrent(int stayopen) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
   ret = _nss_cache_oslogin_setgrent_locked();
@@ -240,7 +246,8 @@ enum nss_status _nss_cache_oslogin_setgrent(int stayopen) {
 // _nss_cache_oslogin_endgrent_locked()
 // Internal close routine
 
-static enum nss_status _nss_cache_oslogin_endgrent_locked(void) {
+static enum nss_status
+_nss_cache_oslogin_endgrent_locked(void) {
   DEBUG("%s %s\n", "Closing", OSLOGIN_GROUP_CACHE_PATH);
   if (g_file) {
     fclose(g_file);
@@ -252,7 +259,8 @@ static enum nss_status _nss_cache_oslogin_endgrent_locked(void) {
 // _nss_cache_oslogin_endgrent()
 // Called by NSS to close the group file
 
-enum nss_status _nss_cache_oslogin_endgrent(void) {
+enum nss_status
+_nss_cache_oslogin_endgrent(void) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
   ret = _nss_cache_oslogin_endgrent_locked();
@@ -263,9 +271,9 @@ enum nss_status _nss_cache_oslogin_endgrent(void) {
 // _nss_cache_oslogin_getgrent_r_locked()
 // Called internally to return the next entry from the group file
 
-static enum nss_status _nss_cache_oslogin_getgrent_r_locked(struct group *result,
-                                                    char *buffer, size_t buflen,
-                                                    int *errnop) {
+static enum nss_status
+_nss_cache_oslogin_getgrent_r_locked(struct group *result,
+                                     char *buffer, size_t buflen, int *errnop) {
   enum nss_status ret = NSS_STATUS_SUCCESS;
 
   if (g_file == NULL) {
@@ -303,8 +311,9 @@ static enum nss_status _nss_cache_oslogin_getgrent_r_locked(struct group *result
 // _nss_cache_oslogin_getgrent_r()
 // Called by NSS to look up next entry in group file
 
-enum nss_status _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
-                                      size_t buflen, int *errnop) {
+enum nss_status
+_nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
+                              size_t buflen, int *errnop) {
   enum nss_status ret;
   NSS_CACHE_OSLOGIN_LOCK();
   ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen, errnop);
@@ -315,9 +324,9 @@ enum nss_status _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer
 // _nss_cache_oslogin_getgrgid_r()
 // Find a group by gid
 
-enum nss_status _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
-                                      char *buffer, size_t buflen,
-                                      int *errnop) {
+enum nss_status
+_nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
+                              char *buffer, size_t buflen, int *errnop) {
   enum nss_status ret;
 
   // First check for user whose UID matches requested GID, for self-groups.
@@ -367,9 +376,9 @@ enum nss_status _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
 // _nss_cache_oslogin_getgrnam_r()
 // Find a group by name
 
-enum nss_status _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
-                                      char *buffer, size_t buflen,
-                                      int *errnop) {
+enum nss_status
+_nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
+                              char *buffer, size_t buflen, int *errnop) {
   enum nss_status ret;
 
   // First check for user whose name matches request, for self-groups.

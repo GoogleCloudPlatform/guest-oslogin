@@ -77,7 +77,8 @@
       fprintf (stderr, __VA_ARGS__); \
     } while(0)
 
-int parsepasswd(char *str, struct passwd *result, char *buffer, size_t buflen) {
+int
+parsepasswd(char *str, struct passwd *result, char *buffer, size_t buflen) {
   int fields[PW_END+1] = {0};
 
   fields[PW_END] = strlen(str)+1;
@@ -109,7 +110,8 @@ int parsepasswd(char *str, struct passwd *result, char *buffer, size_t buflen) {
   return 0;
 }
 
-int parsegroup(char *str, struct group *result, char *buffer, size_t buflen) {
+int
+parsegroup(char *str, struct group *result, char *buffer, size_t buflen) {
   int fields[GR_END+1] = {0};
   int members[MAX_GR_MEM] = {0};
   int i, field, len;
@@ -179,7 +181,8 @@ struct Buffer {
 struct Buffer pwbuf;
 struct Buffer grbuf;
 
-int dial(struct Buffer *const buffer) {
+int
+dial(struct Buffer *const buffer) {
   if (buffer->socket != 0) {
     return 0;
   }
@@ -199,7 +202,8 @@ int dial(struct Buffer *const buffer) {
   return 0;
 }
 
-int recvline(struct Buffer *const buffer) {
+int
+recvline(struct Buffer *const buffer) {
   int res = 0;
   ssize_t recvlen, new_size = 0;
   fd_set fds;

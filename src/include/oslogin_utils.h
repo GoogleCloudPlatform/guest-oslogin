@@ -220,11 +220,6 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* groups);
 // Parses a JSON users response, storing results in a provided string vector.
 bool ParseJsonToUsers(const string& json, std::vector<string>* users);
 
-// Adds users and associated array of char* to provided buffer and store pointer
-// to array in result.gr_mem.
-bool AddUsersToGroup(std::vector<string> users, struct group* result,
-                       BufferManager* buf, int* errnop);
-
 // Gets group matching name.
 bool GetGroupByName(string name, struct group* grp, BufferManager* buf, int* errnop);
 

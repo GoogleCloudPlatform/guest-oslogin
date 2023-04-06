@@ -17,7 +17,6 @@
 #include <errno.h>
 #include <grp.h>
 #include <json.h>
-#include <grp.h>
 #include <nss.h>
 #include <stdio.h>
 #include <stdlib.h>

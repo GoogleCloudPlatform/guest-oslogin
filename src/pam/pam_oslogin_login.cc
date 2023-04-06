@@ -121,9 +121,21 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
   PAM_SYSLOG(pamh, LOG_INFO, "Organization user %s has login permission.",
              user_name);
   if (!file_exists) {
-    std::ofstream users_file(users_filename.c_str());
-    chown(users_filename.c_str(), 0, 0);
-    chmod(users_filename.c_str(), S_IRUSR | S_IWUSR | S_IRGRP);
+    std::ofstream users_file;
+    users_file.open(users_filename.c_str());
+    // OS Login directories are created by another product, guest-agent
+    // https://github.com/GoogleCloudPlatform/guest-agent/blob/56988fa888b46dc0796a958929dceed460f7a3e8/google_guest_agent/oslogin.go#L344
+    // We should be sure a file is opened for writing
+    if (users_file.is_open()) {
+       // this is only for creating an empty file
+       users_file.close();
+
+       chown(users_filename.c_str(), 0, 0);
+       chmod(users_filename.c_str(), S_IRUSR | S_IWUSR | S_IRGRP);
+    } else {
+      PAM_SYSLOG(pamh, LOG_INFO,
+                 "Could not create a user's file %s", users_filename.c_str());
+    }
   }
   return PAM_SUCCESS;
 }

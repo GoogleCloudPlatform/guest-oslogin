@@ -90,6 +90,7 @@ NssCache::NssCache(int cache_size)
     : cache_size_(cache_size),
       entry_cache_(cache_size),
       page_token_(""),
+      index_(0),
       on_last_page_(false) {}
 
 void NssCache::Reset() {

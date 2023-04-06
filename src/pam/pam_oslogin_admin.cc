@@ -78,7 +78,7 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
   filename.append(user_name);
   struct stat buffer;
   bool file_exists = !stat(filename.c_str(), &buffer);
-  long http_code;
+  long http_code = 0;
   if (HttpGet(url.str(), &response, &http_code) && http_code == 200 &&
       ParseJsonToSuccess(response)) {
     if (!file_exists) {

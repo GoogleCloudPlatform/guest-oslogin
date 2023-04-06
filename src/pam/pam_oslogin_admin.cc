@@ -43,12 +43,13 @@ static const char kSudoersDir[] = "/var/google-sudoers.d/";
 
 extern "C" {
 
-PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc,
-                                const char **argv) {
+PAM_EXTERN int
+pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
   // The return value for this module should generally be ignored. By default we
   // will return PAM_SUCCESS.
   int pam_result = PAM_SUCCESS;
   const char *user_name;
+
   if ((pam_result = pam_get_user(pamh, &user_name, NULL)) != PAM_SUCCESS) {
     PAM_SYSLOG(pamh, LOG_INFO, "Could not get pam user.");
     return pam_result;

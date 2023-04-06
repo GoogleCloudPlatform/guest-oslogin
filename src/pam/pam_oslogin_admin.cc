@@ -86,11 +86,21 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc,
                  user_name);
       std::ofstream sudoers_file;
       sudoers_file.open(filename.c_str());
-      sudoers_file << user_name << " ALL=(ALL) NOPASSWD: ALL"
-                   << "\n";
-      sudoers_file.close();
-      chown(filename.c_str(), 0, 0);
-      chmod(filename.c_str(), S_IRUSR | S_IRGRP);
+      // OS Login directories are created by another product, guest-agent
+      // https://github.com/GoogleCloudPlatform/guest-agent/blob/56988fa888b46dc0796a958929dceed460f7a3e8/google_guest_agent/oslogin.go#L344
+      // We should be sure a file is opened for writing
+      if (sudoers_file.is_open()) {
+          sudoers_file << user_name << " ALL=(ALL) NOPASSWD: ALL\n";
+          sudoers_file.close();
+
+          chown(filename.c_str(), 0, 0);
+          chmod(filename.c_str(), S_IRUSR | S_IRGRP);
+      } else {
+          PAM_SYSLOG(pamh, LOG_INFO,
+                     "Could not grant sudo permissions to organization user %s."
+                     " Sudoers file %s is not writable.",
+                     user_name, filename.c_str());
+      }
     }
   } else if (file_exists) {
     remove(filename.c_str());

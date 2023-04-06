@@ -1,7 +1,9 @@
 SHELL = /bin/sh
 TOPDIR = $(realpath ..)
 
-CPPFLAGS = -Iinclude -I/usr/include/json-c
+CPPFLAGS = -Iinclude
+CPPFLAGS += $(shell pkg-config --cflags json-c)
+
 FLAGS = -fPIC -Wall -g
 CFLAGS = $(FLAGS) -Wstrict-prototypes
 CXXFLAGS = $(FLAGS)

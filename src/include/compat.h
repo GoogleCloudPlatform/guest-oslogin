@@ -15,7 +15,23 @@
 #ifndef OSLOGIN_COMPAT_H
 #define OSLOGIN_COMPAT_H
 
-#ifdef __FreeBSD__
+#ifdef __HAIKU__
+
+#warning Haiku has no NSS
+#define DEFAULT_SHELL "/bin/bash"
+#define DEFAULT_PASSWD "x"
+
+#define PASSWD_PATH "/etc/passwd"
+
+#define OSLOGIN_PASSWD_CACHE_PATH "/etc/oslogin_passwd.cache"
+#define OSLOGIN_GROUP_CACHE_PATH "/etc/oslogin_group.cache"
+
+#define K_DEFAULT_PFILE_PATH "/etc/oslogin_passwd.cache"
+#define K_DEFAULT_BACKUP_PFILE_PATH "/etc/oslogin_passwd.cache.bak"
+#define K_DEFAULT_GFILE_PATH "/etc/oslogin_group.cache"
+#define K_DEFAULT_BACKUP_GFILE_PATH "/etc/oslogin_group.cache.bak"
+
+#elif __FreeBSD__
 
 #include <nsswitch.h>
 

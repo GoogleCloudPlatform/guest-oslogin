@@ -18,7 +18,9 @@
 #include <grp.h>
 #include <json.h>
 #include <grp.h>
+#ifndef __HAIKU__
 #include <nss.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>

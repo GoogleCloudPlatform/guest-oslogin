@@ -265,7 +265,7 @@ pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc,
     }
   } else if (challenge.type == SECURITY_KEY_OTP) {
     if (pam_prompt(pamh, PAM_PROMPT_ECHO_ON, &user_token,
-        "Enter your security code by visiting g.co/sc: ") != PAM_SUCCESS) {
+        "Enter your security code by visiting https://g.co/sc: ") != PAM_SUCCESS) {
       pam_error(pamh, "Unable to get user input");
       return PAM_PERM_DENIED;
     }

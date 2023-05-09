@@ -30,7 +30,7 @@ NSS_CACHE_OSLOGIN        = libnss_cache_oslogin-$(VERSION).so
 PAM_LOGIN                = pam_oslogin_login.so
 PAM_ADMIN                = pam_oslogin_admin.so
 
-BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk
+BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk google_trusted_ca_keys
 
 .PHONY: all clean install
 .DEFAULT_GOAL := all
@@ -70,6 +70,9 @@ google_authorized_keys_sk: authorized_keys/authorized_keys_sk.o oslogin_utils.o
 google_oslogin_nss_cache: cache_refresh/cache_refresh.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
+google_trusted_ca_keys: trusted_ca_keys/trusted_ca_keys.o oslogin_utils.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
+
 install: all
 	# Make dirs
 	install -d $(DESTDIR)$(LIBDIR)
@@ -103,6 +106,7 @@ else
 	# Cache refresh systemd timer
 	install -d $(DESTDIR)$(SYSTEMDDIR)
 	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.timer $(TOPDIR)/google-oslogin-cache.service
+	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-trustedca.timer $(TOPDIR)/google-oslogin-trustedca.service
 	install -d $(DESTDIR)$(PRESETDIR)
 	install -m 0644 -t $(DESTDIR)$(PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif

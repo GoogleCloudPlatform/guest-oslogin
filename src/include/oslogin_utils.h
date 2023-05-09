@@ -244,6 +244,11 @@ bool ParseJsonToUsers(const string& json, std::vector<string> *users);
 std::vector<string> ParseJsonToSshKeys(const string& json);
 std::vector<string> ParseJsonToSshKeysSk(const string& json);
 
+// Parses a JSON Certificates response for Trusted CA SSH keys.
+// CA SSH keys are written in ca_keys parameter.
+// Return false if failed and true otherwise
+bool ParseJsonToCAKeys(const string& json, std::vector<string>& ca_keys);
+
 // Parses a JSON object and returns the value associated with a given key.
 bool ParseJsonToKey(const string& json, const string& key, string* response);
 

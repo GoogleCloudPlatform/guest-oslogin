@@ -69,6 +69,7 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 /%{_lib}/security/pam_oslogin_login.so
 /usr/bin/google_authorized_keys
 /usr/bin/google_authorized_keys_sk
+/usr/bin/google_trusted_ca_keys
 /usr/bin/google_oslogin_nss_cache
 /usr/share/selinux/packages/oslogin.pp
 %{_mandir}/man8/nss-oslogin.8.gz
@@ -77,16 +78,20 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 %{_mandir}/man8/libnss_cache_oslogin.so.2.8.gz
 /lib/systemd/system/google-oslogin-cache.service
 /lib/systemd/system/google-oslogin-cache.timer
+/lib/systemd/system/google-oslogin-trustedca.service
+/lib/systemd/system/google-oslogin-trustedca.timer
 /lib/systemd/system-preset/90-google-compute-engine-oslogin.preset
 
 %post
 if [ $1 -eq 1 ]; then
   # Initial installation
   systemctl enable google-oslogin-cache.timer >/dev/null 2>&1 || :
+  systemctl enable google-oslogin-trustedca.timer >/dev/null 2>&1 || :
 
   if [ -d /run/systemd/system ]; then
     systemctl daemon-reload >/dev/null 2>&1 || :
     systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
+    systemctl start google-oslogin-trustedca.timer >/dev/null 2>&1 || :
   fi
 fi
 
@@ -100,6 +105,7 @@ fi
 
 %preun
 %systemd_preun google-oslogin-cache.timer
+%systemd_preun google-oslogin-trustedca.timer
 
 # This is only relevant on EL7.
 %if 0%{?rhel} == 7

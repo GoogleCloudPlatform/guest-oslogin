@@ -104,7 +104,7 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
 
   if (http_code != 200) {
     PAM_SYSLOG(pamh, LOG_INFO, "Failed to validate organization user %s has "
-                               "login permission, got HTTP response code %d.",
+                               "login permission, got HTTP response code %ld.",
                                user_name, http_code);
     return PAM_PERM_DENIED;
   }

@@ -6,6 +6,7 @@ endif
 
 TEST_RUNNER = ./test_runner --gtest_output=xml
 NEW_TEST_RUNNER = ./new_test_runner --gtest_output=xml
+SSHCA_TEST_RUNNER = ./sshca_runner --gtest_output=xml --gtest_filter="SSHCATests.*"
 CPPFLAGS += -I$(TOPDIR)/src/include -I/usr/include/json-c -I$(GTEST_DIR) -isystem $(GTEST_DIR)/include
 CXXFLAGS += -g -Wall -Wextra -std=c++11
 LDLIBS = -lcurl -ljson-c -lpthread
@@ -24,6 +25,12 @@ gtest-all.o: $(GTEST_DIR)/src/gtest-all.cc
 
 test_runner: oslogin_utils_test.o $(TOPDIR)/src/oslogin_utils.o gtest-all.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
+
+sshca_runner: oslogin_sshca_test.o gtest-all.o $(TOPDIR)/src/pam/oslogin_sshca.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS) -lpam
+
+sshca_tests: sshca_runner
+	$(SSHCA_TEST_RUNNER)
 
 new_test_runner: oslogin_test.o gtest-all.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)

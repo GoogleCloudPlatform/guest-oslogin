@@ -27,6 +27,7 @@
 
 #include <compat.h>
 #include <oslogin_utils.h>
+#include <oslogin_sshca.h>
 
 using std::string;
 
@@ -48,7 +49,8 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
   // The return value for this module should generally be ignored. By default we
   // will return PAM_SUCCESS.
   int pam_result = PAM_SUCCESS;
-  const char *user_name;
+  const char *user_name, *ssh_auth_info;
+  char *fingerprint = NULL;
 
   if ((pam_result = pam_get_user(pamh, &user_name, NULL)) != PAM_SUCCESS) {
     PAM_SYSLOG(pamh, LOG_INFO, "Could not get pam user.");
@@ -73,6 +75,17 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
   std::stringstream url;
   url << kMetadataServerUrl << "authorize?email=" << UrlEncode(email)
       << "&policy=adminLogin";
+
+  ssh_auth_info = pam_getenv(pamh, "SSH_AUTH_INFO_0");
+  if (ssh_auth_info != NULL && strlen(ssh_auth_info) > 0) {
+    size_t fp_len = sshca_get_byoid_fingerprint(pamh, ssh_auth_info, &fingerprint);
+    // Don't try to add fingerprint parameter to policy call if we don't find it
+    // in the certificate.
+    if (fp_len > 0) {
+      url << "&fingerprint=" << fingerprint;
+      free(fingerprint);
+    }
+  }
 
   string filename = kSudoersDir;
   filename.append(user_name);

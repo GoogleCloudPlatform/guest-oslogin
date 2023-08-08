@@ -1,0 +1,7 @@
+*.so
+*.o
+google_authorized_keys
+google_authorized_keys_sk
+google_oslogin_nss_cache
+test/sshca_runner
+test/test_detail.xml

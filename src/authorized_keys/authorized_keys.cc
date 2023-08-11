@@ -70,22 +70,7 @@ int main(int argc, char* argv[]) {
   if (!ParseJsonToEmail(user_response, &email) || email.empty()) {
     return 1;
   }
-  // Redundantly verify that this user has permission to log in to this VM.
-  // Normally the PAM module determines this, but in the off chance a transient
-  // error causes the PAM module to permit a user without login permissions,
-  // perform the same check here. If this fails, we can guarantee that we won't
-  // accidentally allow a user to log in without permissions.
-  url.str("");
-  url << kMetadataServerUrl << "authorize?email=" << UrlEncode(email)
-      << "&policy=login";
-  string auth_response;
-  if (!HttpGet(url.str(), &auth_response, &http_code) || http_code != 200 ||
-      auth_response.empty()) {
-    return 1;
-  }
-  if (!ParseJsonToSuccess(auth_response)) {
-    return 1;
-  }
+
   // At this point, we've verified the user can log in. Grab the ssh keys from
   // the user response.
   std::vector<string> ssh_keys = ParseJsonToSshKeys(user_response);

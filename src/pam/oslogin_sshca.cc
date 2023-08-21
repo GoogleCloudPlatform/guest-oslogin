@@ -24,25 +24,25 @@ typedef struct sshca_type {
   int (*skip_custom_fields)(char **buff, size_t *blen);
 } sshca_type;
 
-static int sshca_dsa_skip_fields(char **buff, size_t *blen);
-static int sshca_ecdsa_skip_fields(char **buff, size_t *blen);
-static int sshca_ed25519_skip_fields(char **buff, size_t *blen);
-static int sshca_rsa_skip_fields(char **buff, size_t *blen);
+static int _sshca_dsa_skip_fields(char **buff, size_t *blen);
+static int _sshca_ecdsa_skip_fields(char **buff, size_t *blen);
+static int _sshca_ed25519_skip_fields(char **buff, size_t *blen);
+static int _sshca_rsa_skip_fields(char **buff, size_t *blen);
 
 static sshca_type sshca_impl[] = {
-    {"ecdsa-sha2-nistp256-cert-v01@openssh.com", sshca_ecdsa_skip_fields},
-    {"ecdsa-sha2-nistp384-cert-v01@openssh.com", sshca_ecdsa_skip_fields},
-    {"ecdsa-sha2-nistp521-cert-v01@openssh.com", sshca_ecdsa_skip_fields},
-    {"rsa-sha2-256-cert-v01@openssh.com", sshca_rsa_skip_fields},
-    {"rsa-sha2-512-cert-v01@openssh.com", sshca_rsa_skip_fields},
-    {"ssh-dss-cert-v01@openssh.com", sshca_dsa_skip_fields},
-    {"ssh-ed25519-cert-v01@openssh.com", sshca_ed25519_skip_fields},
-    {"ssh-rsa-cert-v01@openssh.com", sshca_rsa_skip_fields},
+    {"ecdsa-sha2-nistp256-cert-v01@openssh.com", _sshca_ecdsa_skip_fields},
+    {"ecdsa-sha2-nistp384-cert-v01@openssh.com", _sshca_ecdsa_skip_fields},
+    {"ecdsa-sha2-nistp521-cert-v01@openssh.com", _sshca_ecdsa_skip_fields},
+    {"rsa-sha2-256-cert-v01@openssh.com", _sshca_rsa_skip_fields},
+    {"rsa-sha2-512-cert-v01@openssh.com", _sshca_rsa_skip_fields},
+    {"ssh-dss-cert-v01@openssh.com", _sshca_dsa_skip_fields},
+    {"ssh-ed25519-cert-v01@openssh.com", _sshca_ed25519_skip_fields},
+    {"ssh-rsa-cert-v01@openssh.com", _sshca_rsa_skip_fields},
     { },
 };
 
 static int
-sshca_get_string(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
+_sshca_get_string(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
   u_int32_t len;
 
   if (*blen < 4) {
@@ -74,7 +74,7 @@ sshca_get_string(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
 }
 
 static sshca_type*
-sshca_get_implementation(const char *type) {
+_sshca_get_implementation(const char *type) {
   sshca_type *iter;
 
   for (iter = sshca_impl; iter->type != NULL; iter++) {
@@ -87,14 +87,14 @@ sshca_get_implementation(const char *type) {
 }
 
 static int
-sshca_rsa_skip_fields(char **buff, size_t *blen) {
+_sshca_rsa_skip_fields(char **buff, size_t *blen) {
   // Skip e.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip n.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
@@ -102,24 +102,24 @@ sshca_rsa_skip_fields(char **buff, size_t *blen) {
 }
 
 static int
-sshca_dsa_skip_fields(char **buff, size_t *blen) {
+_sshca_dsa_skip_fields(char **buff, size_t *blen) {
   // Skip p.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip q.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip g.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip y.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
@@ -127,20 +127,20 @@ sshca_dsa_skip_fields(char **buff, size_t *blen) {
 }
 
 static int
-sshca_ed25519_skip_fields(char **buff, size_t *blen) {
+_sshca_ed25519_skip_fields(char **buff, size_t *blen) {
   // Skip pk.
-  return sshca_get_string(buff, blen, NULL, NULL);
+  return _sshca_get_string(buff, blen, NULL, NULL);
 }
 
 static int
-sshca_ecdsa_skip_fields(char **buff, size_t *blen) {
+_sshca_ecdsa_skip_fields(char **buff, size_t *blen) {
   // Skip curve.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip public key.
-  if (sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
@@ -148,7 +148,7 @@ sshca_ecdsa_skip_fields(char **buff, size_t *blen) {
 }
 
 static int
-sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **exts) {
+_sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **exts) {
   sshca_type* impl = NULL;
   size_t n_len, t_len, tmp_exts_len, ret = -1;
   char *tmp_exts, *tmp_head, *type, *key_b64, *head;
@@ -171,19 +171,19 @@ sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **ex
     goto out;
   }
 
-  if (sshca_get_string(&key_b64, &n_len, &type, &t_len) < 0) {
+  if (_sshca_get_string(&key_b64, &n_len, &type, &t_len) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not get cert's type string.");
     goto out;
   }
 
-  impl = sshca_get_implementation(type);
+  impl = _sshca_get_implementation(type);
   if (impl == NULL) {
     PAM_SYSLOG(pamh, LOG_ERR, "Invalid cert type: %s.", type);
     goto out;
   }
 
   // Skip nonce for all types of certificates.
-  if (sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"nonce\" field.");
     goto out;
   }
@@ -201,13 +201,13 @@ sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **ex
   SKIP_UINT32(key_b64, n_len);
 
   // Skip key id.
-  if (sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"key id\" field.");
     goto out;
   }
 
   // Skip valid principals.
-  if (sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"valid principals\" "
                "field.");
     goto out;
@@ -220,21 +220,21 @@ sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **ex
   SKIP_UINT64(key_b64, n_len);
 
   // Skip critical options.
-  if (sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"critical options\" "
                "field.");
     goto out;
   }
 
   // Get extensions buffer.
-  if (sshca_get_string(&key_b64, &n_len, &tmp_exts, &tmp_exts_len) < 0) {
+  if (_sshca_get_string(&key_b64, &n_len, &tmp_exts, &tmp_exts_len) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to get cert's \"extensions\" field.");
     goto out;
   }
 
   // The field extensions is a self described/sized buffer.
   tmp_head = tmp_exts;
-  if (sshca_get_string(&tmp_exts, &tmp_exts_len, exts, &ret) < 0) {
+  if (_sshca_get_string(&tmp_exts, &tmp_exts_len, exts, &ret) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to read google's extension.");
     goto out;
   }
@@ -248,28 +248,31 @@ out:
 }
 
 static size_t
-sshca_split_key(const char *blob, char **out) {
-  int i, len, k_start;
+_sshca_split_key(const char *blob, char **out) {
+  int i, len, algo_start, k_start;
   char *key = NULL;
 
-  len = 0;
-  k_start = 0;
+  len, k_start, algo_start = 0;
 
   for (i = 0; blob[i] != '\0'; i++) {
     if (blob[i] == ' ' && key == NULL) {
-      k_start = i + 1;
-      key = (char *)blob + i + 1;
+      if (!algo_start) {
+        algo_start = i;
+      } else {
+        k_start = i + 1;
+        key = (char *)blob + i + 1;
+      }
     } else if (blob[i] == ' ' && key != NULL) {
       len = i;
     }
   }
 
   *out = strndup(key, len - k_start);
-  return len;
+  return strlen(*out);
 }
 
 static size_t
-sshca_extract_fingerprint(const char *extension, char **out) {
+_sshca_extract_fingerprint(const char *extension, char **out) {
   int i = 0;
 
   if (extension == NULL || strstr(extension, "fingerprint@google.com=") == NULL) {
@@ -285,27 +288,27 @@ sshca_extract_fingerprint(const char *extension, char **out) {
   return i;
 }
 
-int
-sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
+static int
+_sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
   size_t f_len, k_len, exts_len = -1;
   char *key, *exts = NULL;
 
-  k_len = sshca_split_key(blob, &key);
+  k_len = _sshca_split_key(blob, &key);
   if (k_len <= 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not split ssh ca cert.");
     goto out;
   }
 
-  exts_len = sshca_get_extension(pamh, key, k_len, &exts);
+  exts_len = _sshca_get_extension(pamh, key, k_len, &exts);
   if (exts_len < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract extension"
+    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract extension "
                "from ssh ca cert.");
     goto out;
   }
 
-  f_len = sshca_extract_fingerprint(exts, fingerprint);
+  f_len = _sshca_extract_fingerprint(exts, fingerprint);
   if (f_len == 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint"
+    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
                "from ssh ca cert's extension.");
     goto out;
   }
@@ -313,6 +316,33 @@ sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerp
 out:
   free(exts);
   free(key);
+
+  return f_len;
+}
+
+int
+sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
+  char *line, *saveptr = NULL;
+  size_t f_len = 0;
+
+  if (blob == NULL || strlen(blob) == 0) {
+    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
+               "from ssh ca cert's extension: \"blob\" is empty.");
+  }
+
+  if (fingerprint == NULL) {
+    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
+               "from ssh ca cert's extension: \"fingerprint\" is NULL.");
+  }
+
+  line = strtok_r((char *)blob, "\n", &saveptr);
+  while (line != NULL) {
+    f_len = _sshca_get_byoid_fingerprint(pamh, line, fingerprint);
+    if (f_len > 0) {
+      return f_len;
+    }
+    line = strtok_r(NULL, "\n", &saveptr);
+  }
 
   return f_len;
 }

@@ -2,10 +2,12 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 approvers:
-  - anandadalton
+  - a-crate
   - bkatyl
   - chaitanyakulkarni28
   - dorileo
+  - drewhli
+  - elicriffield
   - jjerger
   - karnvadaliya
   - koln67

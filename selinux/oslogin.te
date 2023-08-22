@@ -7,9 +7,11 @@ require {
 	attribute non_security_file_type;
 	type http_port_t;
 	type sshd_t;
+	type sshd_key_t;
 	class tcp_socket name_connect;
 	class file { create getattr setattr write open unlink };
 	class dir { search write remove_name add_name };
+	class fifo_file { getattr open read };
 }
 
 #============= types ==============
@@ -22,3 +24,4 @@ typeattribute google_t file_type, non_security_file_type;
 allow sshd_t google_t:file { create getattr setattr write open unlink };
 allow sshd_t google_t:dir { search write remove_name add_name };
 allow sshd_t http_port_t:tcp_socket name_connect;
+allow sshd_t sshd_key_t:fifo_file { getattr open read };

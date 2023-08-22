@@ -1,2 +1,3 @@
 /var/google-sudoers.d(/.*)? system_u:object_r:google_t:s0
 /var/google-users.d(/.*)? system_u:object_r:google_t:s0
+/etc/ssh/oslogin_trustedca.pub -p system_u:object_r:sshd_key_t:s0

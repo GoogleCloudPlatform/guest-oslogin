@@ -4,8 +4,15 @@
 
 .DEFAULT_GOAL := all
 
-all install:
+all install: selinux_module
 	$(MAKE) -C src $@
+
+selinux_module:
+ifdef INSTALL_SELINUX
+	$(MAKE) -C selinux
+else
+	@echo "Variable INSTALL_SELINUX not defined, skipping selinux module build."
+endif
 
 alltests non_network_tests network_tests:
 	$(MAKE) -C test $@

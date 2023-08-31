@@ -33,7 +33,8 @@ BuildRequires:  libcurl-devel
 BuildRequires:  json-c-devel
 BuildRequires:  pam-devel
 BuildRequires:  policycoreutils
-BuildRequires: systemd
+BuildRequires:  checkpolicy
+BuildRequires:  systemd
 
 Requires: boost-regex
 Requires: json-c

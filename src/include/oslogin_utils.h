@@ -276,4 +276,17 @@ bool ContinueSession(bool alt, const string& email, const string& user_token,
 
 // Returns user information from the metadata server.
 bool GetUser(const string& username, string* response);
+
+// Initializes the global sys logger instance setting it up with the
+// provided ident and app, so the syslog entries will look like:
+// <<ident>>: <<app>>: <<Message>>
+// For google_authorized_keys for example, it would look like:
+// sshd: google_authorized_keys: <<Message>>
+extern void SetupSysLog(const char *ident, const char *app);
+
+// Closes the sys logger.
+extern void CloseSysLog();
+
+// Prints out to sys logger with ERR severity.
+extern void SysLogErr(const char *fmt, ...);
 }  // namespace oslogin_utils

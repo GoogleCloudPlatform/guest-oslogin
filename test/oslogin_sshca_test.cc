@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <gtest/gtest.h>
 #include <oslogin_sshca.h>
+#include <oslogin_utils.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -331,7 +332,7 @@ TEST(SSHCATests, TestValidSingleExtCert) {
 
   for (iter = tests; iter->key != NULL; iter++) {
     char *fingerprint = NULL;
-    size_t len = FingerPrintFromBlob(NULL, iter->key, &fingerprint);
+    size_t len = FingerPrintFromBlob(iter->key, &fingerprint);
     ASSERT_GT(len, 0);
     ASSERT_STREQ(fingerprint, "b86db4ca-09fd-429e-b121-a12799614032");
     free(fingerprint);
@@ -355,7 +356,7 @@ TEST(SSHCATests, TestInvalidNoFpCert) {
 
   for (iter = tests; iter->key != NULL; iter++) {
     char *fingerprint = NULL;
-    size_t len = FingerPrintFromBlob(NULL, iter->key, &fingerprint);
+    size_t len = FingerPrintFromBlob(iter->key, &fingerprint);
     ASSERT_EQ(len, 0);
     ASSERT_STREQ(fingerprint, NULL);
     free(fingerprint);

@@ -44,7 +44,7 @@
 namespace oslogin_sshca {
 // The public interface - given a blob with a list of certificates we parse each of
 // them until we find the first fingerprint.
-int FingerPrintFromBlob(pam_handle_t *pamh, const char *blob, char **fingerprint);
+int FingerPrintFromBlob(const char *blob, char **fingerprint);
 }
 
 #endif

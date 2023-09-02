@@ -23,6 +23,7 @@
 #include <time.h>
 
 #include <cstring>
+#include <cstdarg>
 #include <iostream>
 #include <sstream>
 #include <json_object.h>
@@ -49,6 +50,66 @@ const int kMaxRetries = 1;
 const char kUserNameRegex[] = "^[a-zA-Z0-9._][a-zA-Z0-9._-]{0,31}$";
 
 namespace oslogin_utils {
+
+// SysLog wraps syslog operations.
+class SysLog {
+ private:
+  // app is the application name or the application prefix.
+  const char *app;
+ public:
+  // Prints out an error to syslog.
+  void Error(const char *fmt, va_list args);
+
+  // Closes the file descriptor being used to write to sys logger.
+  void Close();
+
+  // Creates a SysLog instance specifying the ident. Additionally
+  // it carries an app identifier, so the syslog entries will look like:
+  // <<ident>>: <<app>>: <<Message>>
+  // For google_authorized_keys for example, it would look like:
+  // sshd: google_authorized_keys: <<Message>>
+  SysLog(const char *ident, const char *app);
+};
+
+static SysLog *logger = NULL;
+
+// ----------------- SysLog -------------------------
+SysLog::SysLog(const char *ident, const char *app) {
+  openlog(ident, LOG_PID|LOG_PERROR, LOG_DAEMON);
+  this->app = app;
+}
+
+void SysLog::Error(const char *fmt, va_list args) {
+  std::stringstream new_fmt;
+  new_fmt << this->app << ": " << fmt;
+  vsyslog(LOG_ERR, new_fmt.str().c_str(), args);
+}
+
+void SysLog::Close() {
+  closelog();
+}
+
+void SetupSysLog(const char *ident, const char *app) {
+  if (ident != NULL && logger == NULL) {
+    logger = new SysLog(ident, app);
+  }
+}
+
+void SysLogErr(const char *fmt, ...) {
+  if (logger != NULL) {
+    va_list args;
+    va_start(args, fmt);
+    logger->Error(fmt, args);
+    va_end(args);
+  }
+}
+
+void CloseSysLog() {
+  if (logger != NULL) {
+    logger->Close();
+    logger = NULL;
+  }
+}
 
 // ----------------- Buffer Manager -----------------
 

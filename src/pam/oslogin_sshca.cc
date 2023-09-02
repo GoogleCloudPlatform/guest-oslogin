@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include <oslogin_sshca.h>
+#include <oslogin_utils.h>
 #include <openbsd.h>
+
+using oslogin_utils::SysLogErr;
 
 namespace oslogin_sshca {
 
@@ -139,7 +142,7 @@ static int SkipECDSAFields(char **buff, size_t *blen) {
   return 0;
 }
 
-static int GetExtension(pam_handle_t *pamh, const char *key, size_t k_len, char **exts) {
+static int GetExtension(const char *key, size_t k_len, char **exts) {
   SSHCertType* impl = NULL;
   size_t n_len, t_len, tmp_exts_len, ret = -1;
   char *tmp_exts, *tmp_head, *type, *key_b64, *head;
@@ -148,12 +151,12 @@ static int GetExtension(pam_handle_t *pamh, const char *key, size_t k_len, char 
 
   head = key_b64 = (char *)calloc(k_len, sizeof(char));
   if (key_b64 == NULL) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not allocate b64 buffer.");
+    SysLogErr("Could not allocate b64 buffer.");
     goto out;
   }
 
   if ((n_len = b64_pton(key, (u_char *)key_b64, k_len)) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could encode buffer b64.");
+    SysLogErr("Could encode buffer b64.");
     goto out;
   }
 
@@ -163,25 +166,25 @@ static int GetExtension(pam_handle_t *pamh, const char *key, size_t k_len, char 
   }
 
   if (GetString(&key_b64, &n_len, &type, &t_len) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not get cert's type string.");
+    SysLogErr("Could not get cert's type string.");
     goto out;
   }
 
   impl = GetImplementation(type);
   if (impl == NULL) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Invalid cert type: %s.", type);
+    SysLogErr("Invalid cert type: %s.", type);
     goto out;
   }
 
   // Skip nonce for all types of certificates.
   if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"nonce\" field.");
+    SysLogErr("Failed to skip cert's \"nonce\" field.");
     goto out;
   }
 
   // Skip type specific fields.
   if (impl->SkipCustomField(&key_b64, &n_len) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's custom/specific fields.");
+    SysLogErr("Failed to skip cert's custom/specific fields.");
     goto out;
   }
 
@@ -193,14 +196,13 @@ static int GetExtension(pam_handle_t *pamh, const char *key, size_t k_len, char 
 
   // Skip key id.
   if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"key id\" field.");
+    SysLogErr("Failed to skip cert's \"key id\" field.");
     goto out;
   }
 
   // Skip valid principals.
   if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"valid principals\" "
-               "field.");
+    SysLogErr("Failed to skip cert's \"valid principals\" field.");
     goto out;
   }
 
@@ -212,21 +214,20 @@ static int GetExtension(pam_handle_t *pamh, const char *key, size_t k_len, char 
 
   // Skip critical options.
   if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"critical options\" "
-               "field.");
+    SysLogErr("Failed to skip cert's \"critical options\" field.");
     goto out;
   }
 
   // Get extensions buffer.
   if (GetString(&key_b64, &n_len, &tmp_exts, &tmp_exts_len) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to get cert's \"extensions\" field.");
+    SysLogErr("Failed to get cert's \"extensions\" field.");
     goto out;
   }
 
   // The field extensions is a self described/sized buffer.
   tmp_head = tmp_exts;
   if (GetString(&tmp_exts, &tmp_exts_len, exts, &ret) < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Failed to read google's extension.");
+    SysLogErr("Failed to read Google's extension.");
     goto out;
   }
 
@@ -242,7 +243,7 @@ static size_t SplitKey(const char *blob, char **out) {
   int i, len, algo_start, k_start;
   char *key = NULL;
 
-  len, k_start, algo_start = 0;
+  len = k_start = algo_start = 0;
 
   for (i = 0; blob[i] != '\0'; i++) {
     if (blob[i] == ' ' && key == NULL) {
@@ -277,27 +278,25 @@ static size_t ExtractFingerPrint(const char *extension, char **out) {
   return i;
 }
 
-static int GetByoidFingerPrint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
+static int GetByoidFingerPrint(const char *blob, char **fingerprint) {
   size_t f_len, k_len, exts_len = -1;
   char *key, *exts = NULL;
 
   k_len = SplitKey(blob, &key);
   if (k_len <= 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not split ssh ca cert.");
+    SysLogErr("Could not split SSH CA cert.");
     goto out;
   }
 
-  exts_len = GetExtension(pamh, key, k_len, &exts);
+  exts_len = GetExtension(key, k_len, &exts);
   if (exts_len < 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract extension "
-               "from ssh ca cert.");
+    SysLogErr("Could not parse/extract extension from SSH CA cert.");
     goto out;
   }
 
   f_len = ExtractFingerPrint(exts, fingerprint);
   if (f_len == 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
-               "from ssh ca cert's extension.");
+    SysLogErr("Could not parse/extract fingerprint from SSH CA cert's extension.");
     goto out;
   }
 
@@ -308,25 +307,23 @@ out:
   return f_len;
 }
 
-int FingerPrintFromBlob(pam_handle_t *pamh, const char *blob, char **fingerprint) {
+int FingerPrintFromBlob(const char *blob, char **fingerprint) {
   char *line, *saveptr = NULL;
   size_t f_len = 0;
 
   if (blob == NULL || strlen(blob) == 0) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
-               "from ssh ca cert's extension: \"blob\" is empty.");
+    SysLogErr("Could not parse/extract fingerprint from SSH CA cert's extension: \"blob\" is empty.");
     return 0;
   }
 
   if (fingerprint == NULL) {
-    PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
-               "from ssh ca cert's extension: \"fingerprint\" is NULL.");
+    SysLogErr("Could not parse/extract fingerprint from SSH CA cert's extension: \"fingerprint\" is NULL.");
     return 0;
   }
 
   line = strtok_r((char *)blob, "\n", &saveptr);
   while (line != NULL) {
-    f_len = GetByoidFingerPrint(pamh, line, fingerprint);
+    f_len = GetByoidFingerPrint(line, fingerprint);
     if (f_len > 0) {
       return f_len;
     }

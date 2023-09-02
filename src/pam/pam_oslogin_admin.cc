@@ -80,7 +80,7 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
 
   ssh_auth_info = pam_getenv(pamh, "SSH_AUTH_INFO_0");
   if (ssh_auth_info != NULL && strlen(ssh_auth_info) > 0) {
-    size_t fp_len = FingerPrintFromBlob(pamh, ssh_auth_info, &fingerprint);
+    size_t fp_len = FingerPrintFromBlob(ssh_auth_info, &fingerprint);
     // Don't try to add fingerprint parameter to policy call if we don't find it
     // in the certificate.
     if (fp_len > 0) {

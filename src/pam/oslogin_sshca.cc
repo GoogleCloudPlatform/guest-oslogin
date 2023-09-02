@@ -15,34 +15,31 @@
 #include <oslogin_sshca.h>
 #include <openbsd.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace oslogin_sshca {
 
-typedef struct sshca_type {
+typedef struct SSHCertType {
   const char *type;
-  int (*skip_custom_fields)(char **buff, size_t *blen);
-} sshca_type;
+  int (*SkipCustomField)(char **buff, size_t *blen);
+} SSHCertType;
 
-static int _sshca_dsa_skip_fields(char **buff, size_t *blen);
-static int _sshca_ecdsa_skip_fields(char **buff, size_t *blen);
-static int _sshca_ed25519_skip_fields(char **buff, size_t *blen);
-static int _sshca_rsa_skip_fields(char **buff, size_t *blen);
+static int SkipDSAFields(char **buff, size_t *blen);
+static int SkipECDSAFields(char **buff, size_t *blen);
+static int SkipED25519Fields(char **buff, size_t *blen);
+static int SkipRSAFields(char **buff, size_t *blen);
 
-static sshca_type sshca_impl[] = {
-    {"ecdsa-sha2-nistp256-cert-v01@openssh.com", _sshca_ecdsa_skip_fields},
-    {"ecdsa-sha2-nistp384-cert-v01@openssh.com", _sshca_ecdsa_skip_fields},
-    {"ecdsa-sha2-nistp521-cert-v01@openssh.com", _sshca_ecdsa_skip_fields},
-    {"rsa-sha2-256-cert-v01@openssh.com", _sshca_rsa_skip_fields},
-    {"rsa-sha2-512-cert-v01@openssh.com", _sshca_rsa_skip_fields},
-    {"ssh-dss-cert-v01@openssh.com", _sshca_dsa_skip_fields},
-    {"ssh-ed25519-cert-v01@openssh.com", _sshca_ed25519_skip_fields},
-    {"ssh-rsa-cert-v01@openssh.com", _sshca_rsa_skip_fields},
+static SSHCertType sshca_impl[] = {
+    {"ecdsa-sha2-nistp256-cert-v01@openssh.com", SkipECDSAFields},
+    {"ecdsa-sha2-nistp384-cert-v01@openssh.com", SkipECDSAFields},
+    {"ecdsa-sha2-nistp521-cert-v01@openssh.com", SkipECDSAFields},
+    {"rsa-sha2-256-cert-v01@openssh.com", SkipRSAFields},
+    {"rsa-sha2-512-cert-v01@openssh.com", SkipRSAFields},
+    {"ssh-dss-cert-v01@openssh.com", SkipDSAFields},
+    {"ssh-ed25519-cert-v01@openssh.com", SkipED25519Fields},
+    {"ssh-rsa-cert-v01@openssh.com", SkipRSAFields},
     { },
 };
 
-static int
-_sshca_get_string(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
+static int GetString(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
   u_int32_t len;
 
   if (*blen < 4) {
@@ -73,9 +70,8 @@ _sshca_get_string(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
   return 0;
 }
 
-static sshca_type*
-_sshca_get_implementation(const char *type) {
-  sshca_type *iter;
+static SSHCertType* GetImplementation(const char *type) {
+  SSHCertType *iter;
 
   for (iter = sshca_impl; iter->type != NULL; iter++) {
     if (strcasecmp(type, iter->type) == 0) {
@@ -86,70 +82,65 @@ _sshca_get_implementation(const char *type) {
   return NULL;
 }
 
-static int
-_sshca_rsa_skip_fields(char **buff, size_t *blen) {
+static int SkipRSAFields(char **buff, size_t *blen) {
   // Skip e.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip n.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int
-_sshca_dsa_skip_fields(char **buff, size_t *blen) {
+static int SkipDSAFields(char **buff, size_t *blen) {
   // Skip p.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip q.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip g.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip y.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int
-_sshca_ed25519_skip_fields(char **buff, size_t *blen) {
+static int SkipED25519Fields(char **buff, size_t *blen) {
   // Skip pk.
-  return _sshca_get_string(buff, blen, NULL, NULL);
+  return GetString(buff, blen, NULL, NULL);
 }
 
-static int
-_sshca_ecdsa_skip_fields(char **buff, size_t *blen) {
+static int SkipECDSAFields(char **buff, size_t *blen) {
   // Skip curve.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   // Skip public key.
-  if (_sshca_get_string(buff, blen, NULL, NULL) < 0) {
+  if (GetString(buff, blen, NULL, NULL) < 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int
-_sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **exts) {
-  sshca_type* impl = NULL;
+static int GetExtension(pam_handle_t *pamh, const char *key, size_t k_len, char **exts) {
+  SSHCertType* impl = NULL;
   size_t n_len, t_len, tmp_exts_len, ret = -1;
   char *tmp_exts, *tmp_head, *type, *key_b64, *head;
 
@@ -171,25 +162,25 @@ _sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **e
     goto out;
   }
 
-  if (_sshca_get_string(&key_b64, &n_len, &type, &t_len) < 0) {
+  if (GetString(&key_b64, &n_len, &type, &t_len) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not get cert's type string.");
     goto out;
   }
 
-  impl = _sshca_get_implementation(type);
+  impl = GetImplementation(type);
   if (impl == NULL) {
     PAM_SYSLOG(pamh, LOG_ERR, "Invalid cert type: %s.", type);
     goto out;
   }
 
   // Skip nonce for all types of certificates.
-  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"nonce\" field.");
     goto out;
   }
 
   // Skip type specific fields.
-  if (impl->skip_custom_fields(&key_b64, &n_len) < 0) {
+  if (impl->SkipCustomField(&key_b64, &n_len) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's custom/specific fields.");
     goto out;
   }
@@ -201,13 +192,13 @@ _sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **e
   SKIP_UINT32(key_b64, n_len);
 
   // Skip key id.
-  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"key id\" field.");
     goto out;
   }
 
   // Skip valid principals.
-  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"valid principals\" "
                "field.");
     goto out;
@@ -220,21 +211,21 @@ _sshca_get_extension(pam_handle_t *pamh, const char *key, size_t k_len, char **e
   SKIP_UINT64(key_b64, n_len);
 
   // Skip critical options.
-  if (_sshca_get_string(&key_b64, &n_len, NULL, NULL) < 0) {
+  if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to skip cert's \"critical options\" "
                "field.");
     goto out;
   }
 
   // Get extensions buffer.
-  if (_sshca_get_string(&key_b64, &n_len, &tmp_exts, &tmp_exts_len) < 0) {
+  if (GetString(&key_b64, &n_len, &tmp_exts, &tmp_exts_len) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to get cert's \"extensions\" field.");
     goto out;
   }
 
   // The field extensions is a self described/sized buffer.
   tmp_head = tmp_exts;
-  if (_sshca_get_string(&tmp_exts, &tmp_exts_len, exts, &ret) < 0) {
+  if (GetString(&tmp_exts, &tmp_exts_len, exts, &ret) < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Failed to read google's extension.");
     goto out;
   }
@@ -247,8 +238,7 @@ out:
   return ret;
 }
 
-static size_t
-_sshca_split_key(const char *blob, char **out) {
+static size_t SplitKey(const char *blob, char **out) {
   int i, len, algo_start, k_start;
   char *key = NULL;
 
@@ -271,8 +261,7 @@ _sshca_split_key(const char *blob, char **out) {
   return strlen(*out);
 }
 
-static size_t
-_sshca_extract_fingerprint(const char *extension, char **out) {
+static size_t ExtractFingerPrint(const char *extension, char **out) {
   int i = 0;
 
   if (extension == NULL || strstr(extension, "fingerprint@google.com=") == NULL) {
@@ -288,25 +277,24 @@ _sshca_extract_fingerprint(const char *extension, char **out) {
   return i;
 }
 
-static int
-_sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
+static int GetByoidFingerPrint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
   size_t f_len, k_len, exts_len = -1;
   char *key, *exts = NULL;
 
-  k_len = _sshca_split_key(blob, &key);
+  k_len = SplitKey(blob, &key);
   if (k_len <= 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not split ssh ca cert.");
     goto out;
   }
 
-  exts_len = _sshca_get_extension(pamh, key, k_len, &exts);
+  exts_len = GetExtension(pamh, key, k_len, &exts);
   if (exts_len < 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract extension "
                "from ssh ca cert.");
     goto out;
   }
 
-  f_len = _sshca_extract_fingerprint(exts, fingerprint);
+  f_len = ExtractFingerPrint(exts, fingerprint);
   if (f_len == 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
                "from ssh ca cert's extension.");
@@ -320,24 +308,25 @@ out:
   return f_len;
 }
 
-int
-sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerprint) {
+int FingerPrintFromBlob(pam_handle_t *pamh, const char *blob, char **fingerprint) {
   char *line, *saveptr = NULL;
   size_t f_len = 0;
 
   if (blob == NULL || strlen(blob) == 0) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
                "from ssh ca cert's extension: \"blob\" is empty.");
+    return 0;
   }
 
   if (fingerprint == NULL) {
     PAM_SYSLOG(pamh, LOG_ERR, "Could not parse/extract fingerprint "
                "from ssh ca cert's extension: \"fingerprint\" is NULL.");
+    return 0;
   }
 
   line = strtok_r((char *)blob, "\n", &saveptr);
   while (line != NULL) {
-    f_len = _sshca_get_byoid_fingerprint(pamh, line, fingerprint);
+    f_len = GetByoidFingerPrint(pamh, line, fingerprint);
     if (f_len > 0) {
       return f_len;
     }
@@ -347,6 +336,4 @@ sshca_get_byoid_fingerprint(pam_handle_t *pamh, const char *blob, char **fingerp
   return f_len;
 }
 
-#ifdef __cplusplus
 }
-#endif

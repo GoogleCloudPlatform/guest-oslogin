@@ -21,7 +21,7 @@
 using std::string;
 using std::vector;
 
-namespace oslogin_utils {
+using oslogin_sshca::FingerPrintFromBlob;
 
 #define VALID_ECDSA_SINGLE_EXT "publickey ecdsa-sha2-nistp256-cert-v01@openssh.com " \
   "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg1yMhf" \
@@ -331,7 +331,7 @@ TEST(SSHCATests, TestValidSingleExtCert) {
 
   for (iter = tests; iter->key != NULL; iter++) {
     char *fingerprint = NULL;
-    size_t len = sshca_get_byoid_fingerprint(NULL, iter->key, &fingerprint);
+    size_t len = FingerPrintFromBlob(NULL, iter->key, &fingerprint);
     ASSERT_GT(len, 0);
     ASSERT_STREQ(fingerprint, "b86db4ca-09fd-429e-b121-a12799614032");
     free(fingerprint);
@@ -355,13 +355,11 @@ TEST(SSHCATests, TestInvalidNoFpCert) {
 
   for (iter = tests; iter->key != NULL; iter++) {
     char *fingerprint = NULL;
-    size_t len = sshca_get_byoid_fingerprint(NULL, iter->key, &fingerprint);
+    size_t len = FingerPrintFromBlob(NULL, iter->key, &fingerprint);
     ASSERT_EQ(len, 0);
     ASSERT_STREQ(fingerprint, NULL);
     free(fingerprint);
   }
-}
-
 }
 
 int main(int argc, char** argv) {

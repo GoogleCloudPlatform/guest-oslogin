@@ -8,7 +8,7 @@ TEST_RUNNER = ./test_runner --gtest_output=xml
 NEW_TEST_RUNNER = ./new_test_runner --gtest_output=xml
 SSHCA_TEST_RUNNER = ./sshca_runner --gtest_output=xml --gtest_filter="SSHCATests.*"
 CPPFLAGS += -I$(TOPDIR)/src/include -I$(TOPDIR)/third_party/include -I/usr/include/json-c -I$(GTEST_DIR) -isystem $(GTEST_DIR)/include
-CXXFLAGS += -g -Wall -Wextra -std=c++11
+CXXFLAGS += -g -Wall -Wextra
 LDLIBS = -lcurl -ljson-c -lpthread
 
 .PHONY: all clean alltests ping reset

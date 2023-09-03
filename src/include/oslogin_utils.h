@@ -289,4 +289,22 @@ extern void CloseSysLog();
 
 // Prints out to sys logger with ERR severity.
 extern void SysLogErr(const char *fmt, ...);
+
+// AuthoOptions wraps authorization options.
+struct AuthOptions {
+  // security_key determines if the MDS "/users?..." should use
+  // the view=securityKey parameter.
+  bool security_key;
+
+  // fingerprint is used when authorizing certificate based
+  // authentication sessions.
+  char *fingerprint;
+
+  // fp_len is the fingerprint string length;
+  size_t fp_len;
+};
+
+// Perform user authorization logic & create users files and google sudoers, returns true if successful,
+// and false otherwise.
+bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response);
 }  // namespace oslogin_utils

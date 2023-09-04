@@ -53,10 +53,10 @@ $(NSS_CACHE_OSLOGIN): nss/nss_cache_oslogin.o nss/compat/getpwent_r.o oslogin_ut
 
 # PAM modules
 
-$(PAM_LOGIN): pam/pam_oslogin_login.o pam/oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
+$(PAM_LOGIN): pam/pam_oslogin_login.o oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -shared $^ -o $@ $(PAMLIBS)
 
-$(PAM_ADMIN): pam/pam_oslogin_admin.o pam/oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
+$(PAM_ADMIN): pam/pam_oslogin_admin.o oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -shared $^ -o $@ $(PAMLIBS)
 
 # Utilities.

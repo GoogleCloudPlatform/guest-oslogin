@@ -26,7 +26,7 @@ gtest-all.o: $(GTEST_DIR)/src/gtest-all.cc
 test_runner: oslogin_utils_test.o $(TOPDIR)/src/oslogin_utils.o gtest-all.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
-sshca_runner: oslogin_sshca_test.o $(TOPDIR)/src/oslogin_utils.o $(TOPDIR)/src/pam/oslogin_sshca.o gtest-all.o
+sshca_runner: oslogin_sshca_test.o $(TOPDIR)/src/oslogin_utils.o $(TOPDIR)/src/oslogin_sshca.o gtest-all.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 sshca_tests: sshca_runner

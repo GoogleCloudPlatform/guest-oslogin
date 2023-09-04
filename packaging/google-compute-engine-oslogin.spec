@@ -66,7 +66,6 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 /%{_lib}/libnss_cache_oslogin-%{version}.so
 /%{_lib}/libnss_oslogin.so.2
 /%{_lib}/libnss_cache_oslogin.so.2
-/%{_lib}/security/pam_oslogin_admin.so
 /%{_lib}/security/pam_oslogin_login.so
 /usr/bin/google_authorized_keys
 /usr/bin/google_authorized_keys_sk

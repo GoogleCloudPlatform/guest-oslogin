@@ -1,4 +1,4 @@
-// Copyright 2020 Google Inc. All Rights Reserved.
+// Copyright 2023 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,133 +13,24 @@
 // limitations under the License.
 
 #define PAM_SM_ACCOUNT
-#include <security/pam_appl.h>
 #include <security/pam_modules.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <syslog.h>
-#include <unistd.h>
 
-#include <iostream>
-#include <fstream>
 #include <sstream>
-#include <string>
 #include <map>
 
 #include <compat.h>
 #include <oslogin_utils.h>
-#include <oslogin_sshca.h>
 
 using oslogin_utils::ContinueSession;
 using oslogin_utils::GetUser;
-using oslogin_utils::HttpGet;
-using oslogin_utils::HttpPost;
-using oslogin_utils::kMetadataServerUrl;
 using oslogin_utils::ParseJsonToChallenges;
 using oslogin_utils::ParseJsonToKey;
 using oslogin_utils::ParseJsonToEmail;
-using oslogin_utils::ParseJsonToSuccess;
 using oslogin_utils::StartSession;
-using oslogin_utils::UrlEncode;
 using oslogin_utils::ValidateUserName;
 
-static const char kUsersDir[] = "/var/google-users.d/";
-
 extern "C" {
-
-PAM_EXTERN int
-pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
-  const char *user_name;
-
-  if (pam_get_user(pamh, &user_name, NULL) != PAM_SUCCESS) {
-    PAM_SYSLOG(pamh, LOG_INFO, "Could not get pam user.");
-    return PAM_AUTH_ERR;
-  }
-
-  if (!ValidateUserName(user_name)) {
-    // Not a valid OS Login username.
-    return PAM_IGNORE;
-  }
-
-  std::string users_filename = kUsersDir;
-  users_filename.append(user_name);
-  struct stat buffer;
-  bool file_exists = !stat(users_filename.c_str(), &buffer);
-
-  std::string str_user_name(user_name);
-  std::stringstream url;
-  url << kMetadataServerUrl << "users?username=" << UrlEncode(str_user_name);
-
-  std::string response;
-  long http_code = 0;
-  if (!HttpGet(url.str(), &response, &http_code) || response.empty()
-      || http_code != 200) {
-    if (http_code == 404) {
-      // This module is only consulted for OS Login users.
-      return PAM_IGNORE;
-    }
-
-    // Check local file for that user as a last resort.
-    if (file_exists) {
-      return PAM_PERM_DENIED;
-    }
-
-    // We can't confirm this is an OS Login user, ignore module.
-    return PAM_IGNORE;
-  }
-
-  std::string email;
-  if (!ParseJsonToEmail(response, &email) || email.empty()) {
-    return PAM_AUTH_ERR;
-  }
-
-  url.str("");
-  url << kMetadataServerUrl << "authorize?email=" << UrlEncode(email)
-      << "&policy=login";
-
-  if (!HttpGet(url.str(), &response, &http_code)) {
-    PAM_SYSLOG(pamh, LOG_INFO, "Failed to validate organization user %s "
-                               "has login permission.", user_name);
-    return PAM_PERM_DENIED;
-  }
-
-  if (http_code != 200) {
-    PAM_SYSLOG(pamh, LOG_INFO, "Failed to validate organization user %s has "
-                               "login permission, got HTTP response code %d.",
-                               user_name, http_code);
-    return PAM_PERM_DENIED;
-  }
-
-  if (!ParseJsonToSuccess(response)) {
-    PAM_SYSLOG(pamh, LOG_INFO, "Organization user %s does not have login "
-                               "permission.", user_name);
-    if (file_exists) {
-      remove(users_filename.c_str());
-    }
-    return PAM_PERM_DENIED;
-  }
-
-  PAM_SYSLOG(pamh, LOG_INFO, "Organization user %s has login permission.",
-             user_name);
-  if (!file_exists) {
-    std::ofstream users_file;
-    users_file.open(users_filename.c_str());
-    // OS Login directories are created by another product, guest-agent
-    // https://github.com/GoogleCloudPlatform/guest-agent/blob/56988fa888b46dc0796a958929dceed460f7a3e8/google_guest_agent/oslogin.go#L344
-    // We should be sure a file is opened for writing
-    if (users_file.is_open()) {
-       // this is only for creating an empty file
-       users_file.close();
-
-       chown(users_filename.c_str(), 0, 0);
-       chmod(users_filename.c_str(), S_IRUSR | S_IWUSR | S_IRGRP);
-    } else {
-      PAM_SYSLOG(pamh, LOG_INFO,
-                 "Could not create a user's file %s", users_filename.c_str());
-    }
-  }
-  return PAM_SUCCESS;
-}
 
 PAM_EXTERN int
 pam_sm_setcred(pam_handle_t* pamh, int flags, int argc, const char** argv) {

@@ -239,29 +239,6 @@ out:
   return ret;
 }
 
-static size_t SplitKey(const char *blob, char **out) {
-  int i, len, algo_start, k_start;
-  char *key = NULL;
-
-  len = k_start = algo_start = 0;
-
-  for (i = 0; blob[i] != '\0'; i++) {
-    if (blob[i] == ' ' && key == NULL) {
-      if (!algo_start) {
-        algo_start = i;
-      } else {
-        k_start = i + 1;
-        key = (char *)blob + i + 1;
-      }
-    } else if (blob[i] == ' ' && key != NULL) {
-      len = i;
-    }
-  }
-
-  *out = strndup(key, len - k_start);
-  return strlen(*out);
-}
-
 static size_t ExtractFingerPrint(const char *extension, char **out) {
   int i = 0;
 
@@ -279,16 +256,10 @@ static size_t ExtractFingerPrint(const char *extension, char **out) {
 }
 
 static int GetByoidFingerPrint(const char *blob, char **fingerprint) {
-  size_t f_len, k_len, exts_len = -1;
-  char *key, *exts = NULL;
+  size_t f_len, exts_len = -1;
+  char *exts = NULL;
 
-  k_len = SplitKey(blob, &key);
-  if (k_len <= 0) {
-    SysLogErr("Could not split SSH CA cert.");
-    goto out;
-  }
-
-  exts_len = GetExtension(key, k_len, &exts);
+  exts_len = GetExtension(blob, strlen(blob), &exts);
   if (exts_len < 0) {
     SysLogErr("Could not parse/extract extension from SSH CA cert.");
     goto out;
@@ -302,15 +273,11 @@ static int GetByoidFingerPrint(const char *blob, char **fingerprint) {
 
 out:
   free(exts);
-  free(key);
 
   return f_len;
 }
 
 int FingerPrintFromBlob(const char *blob, char **fingerprint) {
-  char *line, *saveptr = NULL;
-  size_t f_len = 0;
-
   if (blob == NULL || strlen(blob) == 0) {
     SysLogErr("Could not parse/extract fingerprint from SSH CA cert's extension: \"blob\" is empty.");
     return 0;
@@ -321,16 +288,7 @@ int FingerPrintFromBlob(const char *blob, char **fingerprint) {
     return 0;
   }
 
-  line = strtok_r((char *)blob, "\n", &saveptr);
-  while (line != NULL) {
-    f_len = GetByoidFingerPrint(line, fingerprint);
-    if (f_len > 0) {
-      return f_len;
-    }
-    line = strtok_r(NULL, "\n", &saveptr);
-  }
-
-  return f_len;
+  return GetByoidFingerPrint(blob, fingerprint);
 }
 
 }

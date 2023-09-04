@@ -24,8 +24,7 @@ using std::vector;
 
 using oslogin_sshca::FingerPrintFromBlob;
 
-#define VALID_ECDSA_SINGLE_EXT "publickey ecdsa-sha2-nistp256-cert-v01@openssh.com " \
-  "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg1yMhf" \
+#define VALID_ECDSA_SINGLE_EXT "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg1yMhf" \
   "NVBe4etWEQNDmtxhsAD+YAb7fl/Bn0Z+GGEE9EAAAAIbmlzdHAyNTYAAABBBJ+nM2cR4B" \
   "FHbmokUIScpTaSkx/F1QS2KfIx6z4wcpUmjzKtbP0KFw12mMUiNHzlNBD0B2RnX54uN+k" \
   "bjYGUdSAAAAAAAAAAAAAAAAEAAAAScGFudGhlb24uc2l0YXIubWlnAAAAFgAAABJwYW50" \
@@ -49,8 +48,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "bcetrgglFiujUFlIdxkHMmsIxHM88wEnJAlETd7zl9WR/FgQYn3y2dZz9VKoheJdg== "  \
   "pantheon.sitar.mig"                                                    \
 
-#define VALID_ECDSA_MULTI_EXT "publickey ecdsa-sha2-nistp256-cert-v01@o" \
-  "penssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb" \
+#define VALID_ECDSA_MULTI_EXT "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb" \
   "20AAAAgcBZK0OB/KoC8ir+mo+aDJm3e88cmk1/UZ+NMhiWyXMQAAAAIbmlzdHAyNTYAA" \
   "ABBBCK4bF9EA181g2ZHWmuggqjsK53SwQKVzyDNZHDIMcCN117t6dSJYvSAgnlg01PGx" \
   "9HyTz7ffcPf3yUfN21WgRsAAAAAAAAAAAAAAAEAAAAWZmluZ2VycHJpbnRAZ29vZ2xlL" \
@@ -65,8 +63,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "chbWRO1o6ignVyuwq6tTjz/rSfzkjDZw6BsAAAAIQCSDGI9KQuAxhaVDhD9y1XHm2s+I" \
   "+IddaiA/0hzb4MDtA== fingerprint@google.com"                           \
 
-#define INVALID_ECDSA_NO_FP "publickey ecdsa-sha2-nistp256-cert-v01@openssh.com A" \
-  "AAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgxlbtL" \
+#define INVALID_ECDSA_NO_FP "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgxlbtL" \
   "/mjYXEgsXjl7GZgpvIFncxbfmjPYVewm1sdXo4AAAAIbmlzdHAyNTYAAABBBMYdGLr6M" \
   "102qgBeJ3CanDi0WV1vGif2jMMv1ldtN0+wbDztYdtUu8iop/tN46wFVbfmSzyx/R2YL" \
   "bvQ+z2k/sYAAAAAAAAAAAAAAAEAAAAWZmluZ2VycHJpbnRAZ29vZ2xlLmNvbQAAABoAA" \
@@ -77,12 +74,12 @@ using oslogin_sshca::FingerPrintFromBlob;
   "pM3dlil8jDXlpL4U1JSmP3MeHX0OKcpHgAAACAYiWa3KrreEzN+VrnuhwStH70bvH9Qm" \
   "6Va6a0IcMrMkA== fingerprint@google.com"                               \
 
-#define INVALID_ECDSA_NON_CERT "publickey ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTI" \
+#define INVALID_ECDSA_NON_CERT "AAAAE2VjZHNhLXNoYTI"                     \
   "tbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMYdGLr6M102qgBeJ3CanDi0WV1vGif2jMM" \
   "v1ldtN0+wbDztYdtUu8iop/tN46wFVbfmSzyx/R2YLbvQ+z2k/sY= "               \
   "fingerprint@google.com"                                               \
 
-#define VALID_RSA_SINGLE_EXT "publickey ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc" \
+#define VALID_RSA_SINGLE_EXT "AAAAHHNzaC1yc"                              \
   "2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgijvX6FIu7BjRIACC+C0b8cxrAORm8flzJU" \
   "3Y2q7ci/4AAAADAQABAAABAQCU/mydd9mSwlSDv4T3OiL5IHrvSuXpWFvCEDmVyLxBHz1" \
   "FCwjnk3G5xSt9nGtUyL0KpGt0dyvLU07JGB33cbVnVe1z3373FNKxF8LdwDTEZG6xijXu" \
@@ -115,8 +112,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "IBVqgGgEztsSYO0brQWsCoiOxToxWiqDbYc2ifgcIUB+kSzvmbkvbgoNuT111PKpMkIii" \
   "GqmJpNjwsqExxW5E= fingerprint@google.com"                              \
 
-#define VALID_RSA_MULTI_EXT "publickey ssh-rsa-cert-v01@openssh.com AAAA" \
-  "HHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgpv8XuCPuX0/2hATuCuFa1kVXR" \
+#define VALID_RSA_MULTI_EXT "AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgpv8XuCPuX0/2hATuCuFa1kVXR" \
   "CNzX7gU6T4Q/EVZiMkAAAADAQABAAABAQDPh7YORgzS7V3F5oxVlwTABglvV6cUx32GO7" \
   "I84CxVRnWdW9D4eQoRD+lN8YKcbWN826/G9A9AIyADl6nMpxocgymCCyz4ujapTf/ntaH" \
   "pc7QTNuKDQ3x9ptHVjPSbXx+HVBC0gFgCxRlymAjN8P9Rex+wkJRMPCOIwykO9H5BkDfc" \
@@ -151,8 +147,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "WIdoJJX2phxK1km8+78sdCbtVVaTzlGNDflqM++kqmNHhZFtoWRYeHKYHRFo "         \
   "fingerprint@google.com"                                                \
 
-#define INVALID_RSA_NO_FP "publickey ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2Et" \
-  "Y2VydC12MDFAb3BlbnNzaC5jb20AAAAgwCArEN+qa2BR5+4DNaSCwGP3avz3wFcJzuaZk" \
+#define INVALID_RSA_NO_FP "AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgwCArEN+qa2BR5+4DNaSCwGP3avz3wFcJzuaZk" \
   "UrXsv0AAAADAQABAAABAQCic3UBNOW41D6BH8e8acBKAw3PdWcvqEIP8v5Otk56nXNrZH" \
   "8tTrposPHZOjAoMCyv9F3siuv+ZfX8k0/x2l9Efayhdcr8AWIr+riqYBNHUby7iefdXCR" \
   "wFWXYMzqgG/sHVe5A5xsRAB7y/M8NzEPCC8CSh8gltNjxftDisCUp2IyIV0e1QvC3ZHMh" \
@@ -183,7 +178,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "6tN/eIqzpsfLbRPoK4B7xmoEqtPn1KidKZnvegGasSfrquoyM/E4enhV3kXfJQ== "     \
   "fingerprint@google.com"                                                \
 
-#define INVALID_RSA_NON_CERT "publickey ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCU/m" \
+#define INVALID_RSA_NON_CERT "AAAAB3NzaC1yc2EAAAADAQABAAABAQCU/m" \
   "ydd9mSwlSDv4T3OiL5IHrvSuXpWFvCEDmVyLxBHz1FCwjnk3G5xSt9nGtUyL0KpGt0dyv" \
   "LU07JGB33cbVnVe1z3373FNKxF8LdwDTEZG6xijXuOi4xfk47arlpk9Pw14qcnVu9on4R" \
   "m4cSmm5PkyIwTfJsKvOl8oOgZ0HZG7pzYEt+9wUoeGzUE0rsAreNFVB7ZBqHp2ZtdIe5d" \
@@ -191,8 +186,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "NZPchE/T19LSP/fQbPCGmqc+mC6YodSEbLkO6JmOaW+knTEc9D6xdozx6Oa4vR "       \
   "fingerprint@google.com"                                                \
 
-#define VALID_DSA_SINGLE_EXT "publickey ssh-dss-cert-v01@openssh.com AAAAHHNzaC1kc" \
-  "3MtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgH400e9SzsvaN8OkKvH26sXEJtU/BVc2IBG" \
+#define VALID_DSA_SINGLE_EXT "AAAAHHNzaC1kc3MtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgH400e9SzsvaN8OkKvH26sXEJtU/BVc2IBG" \
   "fdZDHk508AAACBAO9UdOmq7Z0qy86mwsDf07TmXQe7X0TLKbyFSsd2b+jTCzpXy9rBhgg" \
   "oJlzYzxSQgtR4JaSTauZMiQQViN3cKvHuGfAXIOIMtMHVupNy6WSkcixGrvw6Y0Yr90+e" \
   "8PXcFw6jwQbFZX4v9zlUuIl067rCrxp1jnhBjxvBZEmpR/ezAAAAFQCO10V2wYXJ7cSo4" \
@@ -216,8 +210,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "AAAAdzc2gtZHNzAAAAKH5faM5YTlMn+h2cf99PJ8rjvqQUJoh5yi3a4pkGcr5MJs53Wfi" \
   "DPaA= fingerprint@google.com"                                          \
 
-#define VALID_DSA_MULTI_EXT "publickey ssh-dss-cert-v01@openssh.com AAAA" \
-  "HHNzaC1kc3MtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg4F67aKUUtM8mWvtHxr2AjRcDB" \
+#define VALID_DSA_MULTI_EXT "AAAAHHNzaC1kc3MtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg4F67aKUUtM8mWvtHxr2AjRcDB" \
   "jkmICwZRUOx4JaDVYEAAACBAKbdH1vmX/ZCVY1v41hXxEroqQpfOGR+G/0gtuscO5rU+c" \
   "9T4qq5lm3E+SwFfCCqC4x6+zDomsJvptMJU0r1oxMuXDo0PRtr4qMMKw0FwZ29D+9zITb" \
   "FvaRUc4+FQ5JvxCUBEKQxzetsTyIsirM4vWW6oKMGACAvgs3qu+CrPKtnAAAAFQDWlrhr" \
@@ -244,8 +237,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "QgobHREVlFH0/E84XhTVRfOok7RE4ht2EOiZLG2cfThvWUQ= "                     \
   "fingerprint@google.com"                                                \
 
-#define INVALID_DSA_NO_FP "publickey ssh-dss-cert-v01@openssh.com AAAAHHNzaC1kc3Mt" \
-  "Y2VydC12MDFAb3BlbnNzaC5jb20AAAAgGrlYnOqQxs/zzfWRcrM7DHrFy653/x7rtOghw" \
+#define INVALID_DSA_NO_FP "AAAAHHNzaC1kc3MtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgGrlYnOqQxs/zzfWRcrM7DHrFy653/x7rtOghw" \
   "R/f3HIAAACBALzWA8yWLownZsO4Tuc4DF6EplCJ1SBSEqMYAEhzrnxjHkoOpJ3Ncs+Zn5" \
   "jdcnCamkm6KQ4keXkV0xwLthRgLxhUguc9xANV5k2Vft+axWr+cp+KNiGzDjblTUnWzQD" \
   "5Q/mBpiFKL7EiZski3swpJQs0kGQW2hxbjlr7I0EhM8e1AAAAFQDdVQaUxoK58jpTFdVi" \
@@ -268,7 +260,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "+YzrU7BOR7qnGs1qJqWhgFKXETMeHxPzpi4ny9tSNlI6c0g= "                     \
   "fingerprint@google.com"                                                \
 
-#define INVALID_DSA_NON_CERT "publickey ssh-dss AAAAB3NzaC1kc3MAAACBAO9UdOmq7Z0qy8" \
+#define INVALID_DSA_NON_CERT "AAAAB3NzaC1kc3MAAACBAO9UdOmq7Z0qy8"         \
   "6mwsDf07TmXQe7X0TLKbyFSsd2b+jTCzpXy9rBhggoJlzYzxSQgtR4JaSTauZMiQQViN3" \
   "cKvHuGfAXIOIMtMHVupNy6WSkcixGrvw6Y0Yr90+e8PXcFw6jwQbFZX4v9zlUuIl067rC" \
   "rxp1jnhBjxvBZEmpR/ezAAAAFQCO10V2wYXJ7cSo4eEgHB1BnOxbzwAAAIEAzbdt5bgzV" \
@@ -279,8 +271,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "kN0PeT2KtyGWqLcnbFRSQGNQOs+vv3TIUofZosXKTA2EtmjpKcIbfu3lF+J50g= "      \
   "fingerprint@google.com"                                                \
 
-#define VALID_ED25519_SINGLE_EXT "publickey ssh-ed25519-cert-v01@openssh.com AAAAI" \
-  "HNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIDaErnQWEw/jxPD0JUJsEk" \
+#define VALID_ED25519_SINGLE_EXT "AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIDaErnQWEw/jxPD0JUJsEk" \
   "CtENcE11Zl53QHbxbAgx22AAAAIHs6r2AekiTHmmoJMKxAKtKW4qcGq5Ku1+SJ1NLdZh0" \
   "1AAAAAAAAAAAAAAABAAAAFmZpbmdlcnByaW50QGdvb2dsZS5jb20AAAAaAAAAFmZpbmdl" \
   "cnByaW50QGdvb2dsZS5jb20AAAAAZNEqzAAAAABmsQ0IAAAAAAAAAEMAAAA7ZmluZ2Vyc" \
@@ -290,8 +281,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "Yv0T0U/GZoCiLfVm3pcXV3RA8aze+y/pbjv+MOxjmAb4KbRH31/S34UALsyGwQM= fing" \
   "erprint@google.com"                                                    \
 
-#define VALID_ED25519_MULTI_EXT "publickey ssh-ed25519-cert-v01@openssh." \
-  "com AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIEBlk2f75yvu5" \
+#define VALID_ED25519_MULTI_EXT "AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIEBlk2f75yvu5" \
   "8QqsykJfRrKxblQi2RmcW2bzj9mhi2YAAAAINYsHqqaS4JdLuAevLnHc7lBu0qv2/Lfx+" \
   "VLRTIIA5wxAAAAAAAAAAAAAAABAAAAFmZpbmdlcnByaW50QGdvb2dsZS5jb20AAAAaAAA" \
   "AFmZpbmdlcnByaW50QGdvb2dsZS5jb20AAAAAZOTuuAAAAABmxND2AAAAAAAAAMUAAAA7" \
@@ -303,8 +293,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "Atzc2gtZWQyNTUxOQAAAEANxz8Lv5Ojc0U1SIU5eGoGk8N+LAHS5/OfB3AvLT94raJ8qc" \
   "lB7KvEgKOycsF5xLJOL9+/oe29SeNTq+ubIkIN fingerprint@google.com"         \
 
-#define INVALID_ED25519_NO_FP "publickey ssh-ed25519-cert-v01@openssh.com AAAAIHNz" \
-  "aC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIDDgIXa9QLFY7RpSNnWDm3Saq" \
+#define INVALID_ED25519_NO_FP "AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIDDgIXa9QLFY7RpSNnWDm3Saq" \
   "YZ5HGcpzHq9hdv64nqXAAAAIKfDRdZjpCb2YVsmhs286hQTH7JFctizNC0W7UQKfruSAA" \
   "AAAAAAAAAAAAABAAAAFmZpbmdlcnByaW50QGdvb2dsZS5jb20AAAAaAAAAFmZpbmdlcnB" \
   "yaW50QGdvb2dsZS5jb20AAAAAZNFCeAAAAABmsSTsAAAAAAAAAAAAAAAAAAAAMwAAAAtz" \
@@ -312,7 +301,7 @@ using oslogin_sshca::FingerPrintFromBlob;
   "AALc3NoLWVkMjU1MTkAAABAt2CPRZos3Lna+44LwI6ON8rRktxAqz1S4nUf+IwrG83Wbv" \
   "nEvvZ2plHLTAU7GP2ZMedVKoXB9KXB2vNBVjt9Cg== fingerprint@google.com"     \
 
-#define INVALID_ED25519_NON_CERT "publickey ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH" \
+#define INVALID_ED25519_NON_CERT "AAAAC3NzaC1lZDI1NTE5AAAAIH"             \
   "s6r2AekiTHmmoJMKxAKtKW4qcGq5Ku1+SJ1NLdZh01 fingerprint@google.com"     \
 
 TEST(SSHCATests, TestValidSingleExtCert) {

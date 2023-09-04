@@ -43,16 +43,13 @@ using oslogin_utils::StartSession;
 using oslogin_utils::UrlEncode;
 using oslogin_utils::ValidateUserName;
 
-using oslogin_sshca::FingerPrintFromBlob;
-
 static const char kUsersDir[] = "/var/google-users.d/";
 
 extern "C" {
 
 PAM_EXTERN int
 pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
-  const char *user_name, *ssh_auth_info;
-  char *fingerprint = NULL;
+  const char *user_name;
 
   if (pam_get_user(pamh, &user_name, NULL) != PAM_SUCCESS) {
     PAM_SYSLOG(pamh, LOG_INFO, "Could not get pam user.");
@@ -99,17 +96,6 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
   url.str("");
   url << kMetadataServerUrl << "authorize?email=" << UrlEncode(email)
       << "&policy=login";
-
-  ssh_auth_info = pam_getenv(pamh, "SSH_AUTH_INFO_0");
-  if (ssh_auth_info != NULL && strlen(ssh_auth_info) > 0) {
-    size_t fp_len = FingerPrintFromBlob(ssh_auth_info, &fingerprint);
-    // Don't try to add fingerprint parameter to policy call if we don't find it
-    // in the certificate.
-    if (fp_len > 0) {
-      url << "&fingerprint=" << fingerprint;
-      free(fingerprint);
-    }
-  }
 
   if (!HttpGet(url.str(), &response, &http_code)) {
     PAM_SYSLOG(pamh, LOG_INFO, "Failed to validate organization user %s "

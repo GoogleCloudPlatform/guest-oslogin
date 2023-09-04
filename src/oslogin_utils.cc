@@ -1372,4 +1372,19 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
 
   return true;
 }
+
+const char *FileName(const char *file_path) {
+  int res_start = 0;
+  for (int i = 0; file_path[i] != '\0'; i++) {
+    if (file_path[i] == '/') {
+      res_start = i;
+    }
+  }
+
+  if (res_start > 0) {
+    return file_path + res_start + 1;
+  }
+
+  return file_path;
+}
 }  // namespace oslogin_utils

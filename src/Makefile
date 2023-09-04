@@ -30,7 +30,7 @@ NSS_CACHE_OSLOGIN        = libnss_cache_oslogin-$(VERSION).so
 PAM_LOGIN                = pam_oslogin_login.so
 PAM_ADMIN                = pam_oslogin_admin.so
 
-BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk
+BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk google_authorized_principals
 
 .PHONY: all clean install
 .DEFAULT_GOAL := all
@@ -60,6 +60,9 @@ $(PAM_ADMIN): pam/pam_oslogin_admin.o oslogin_sshca.o oslogin_utils.o include/os
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -shared $^ -o $@ $(PAMLIBS)
 
 # Utilities.
+
+google_authorized_principals: authorized_principals/authorized_principals.o oslogin_utils.o oslogin_sshca.o include/oslogin_sshca.h
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 google_authorized_keys: authorized_keys/authorized_keys.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)

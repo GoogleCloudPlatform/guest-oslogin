@@ -1,0 +1,8 @@
+[Unit]
+Description=OS Login Trusted CA SSH keys sync
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/google_trusted_ca_keys
+
+# No [Install] section - this is controlled by google-oslogin-cache.timer

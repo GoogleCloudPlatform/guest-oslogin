@@ -937,6 +937,50 @@ cleanup:
   return ret;
 }
 
+bool ParseJsonToCAKeys(const string& json, std::vector<string>& ca_keys) {
+  json_object* root = NULL;
+  root = json_tokener_parse(json.c_str());
+  if (root == NULL) {
+    return false;
+  }
+
+  json_object* trusted_cas = NULL;
+  if (!json_object_object_get_ex(root, "trustedCertificateAuthorities", &trusted_cas)) {
+    goto fail;
+  }
+  if (json_object_get_type(trusted_cas) != json_type_array) {
+    goto fail;
+  }
+
+  {
+    size_t number_of_keys = json_object_array_length(trusted_cas);
+    json_object* trusted_ca = NULL;
+    json_object* public_key = NULL;
+    string key_to_add = "";
+
+    for (size_t idx = 0; idx < number_of_keys; ++idx) {
+      trusted_ca = json_object_array_get_idx(trusted_cas, idx);
+      if (json_object_get_type(trusted_ca) != json_type_object) {
+        goto fail;
+      }
+      if (!json_object_object_get_ex(trusted_ca, "publicKey", &public_key)) {
+        goto fail;
+      }
+
+      key_to_add = json_object_get_string(public_key);
+      ca_keys.push_back(key_to_add);
+      key_to_add.clear();
+    }
+  }
+  json_object_put(root);
+  return true;
+
+fail:
+  json_object_put(root);
+  return false;
+}
+
+
 // ----------------- OS Login functions -----------------
 
 

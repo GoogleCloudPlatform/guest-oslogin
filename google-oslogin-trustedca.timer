@@ -1,0 +1,9 @@
+[Unit]
+Description=OS Login Trusted CA SSH keys sync timer
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=5m
+
+[Install]
+WantedBy=timers.target

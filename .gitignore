@@ -7,3 +7,6 @@ test/sshca_runner
 test/test_detail.xml
 selinux/oslogin.mod
 selinux/oslogin.pp
+test/new_test_runner
+test/test_runner
+src/google_authorized_principals

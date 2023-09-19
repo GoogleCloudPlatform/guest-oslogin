@@ -168,7 +168,7 @@ int refreshgroupcache() {
       }
       cache_file << "\n";
     }
-    catch (std::ofstream::failure e) {
+    catch (const std::ofstream::failure &e) {
       syslog(LOG_ERR, "Exception writing file");
       error_code = ENOENT;
       break;
@@ -177,7 +177,7 @@ int refreshgroupcache() {
   try {
     cache_file.close();
   }
-  catch (std::ofstream::failure e) {
+  catch (const std::ofstream::failure &e) {
     syslog(LOG_ERR, "Exception closing file");
     error_code = ENOENT;
   }

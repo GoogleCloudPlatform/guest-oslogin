@@ -28,14 +28,13 @@ NSS_OSLOGIN              = libnss_oslogin-$(VERSION).so
 NSS_CACHE_OSLOGIN        = libnss_cache_oslogin-$(VERSION).so
 
 PAM_LOGIN                = pam_oslogin_login.so
-PAM_ADMIN                = pam_oslogin_admin.so
 
-BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk
+BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk google_authorized_principals
 
 .PHONY: all clean install
 .DEFAULT_GOAL := all
 
-all: $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN) $(PAM_LOGIN) $(PAM_ADMIN) $(BINARIES)
+all: $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN) $(PAM_LOGIN) $(BINARIES)
 
 clean:
 	rm -f $(BINARIES)
@@ -53,13 +52,13 @@ $(NSS_CACHE_OSLOGIN): nss/nss_cache_oslogin.o nss/compat/getpwent_r.o oslogin_ut
 
 # PAM modules
 
-$(PAM_LOGIN): pam/pam_oslogin_login.o pam/oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -shared $^ -o $@ $(PAMLIBS)
-
-$(PAM_ADMIN): pam/pam_oslogin_admin.o pam/oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
+$(PAM_LOGIN): pam/pam_oslogin_login.o oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -shared $^ -o $@ $(PAMLIBS)
 
 # Utilities.
+
+google_authorized_principals: authorized_principals/authorized_principals.o oslogin_utils.o oslogin_sshca.o include/oslogin_sshca.h
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 google_authorized_keys: authorized_keys/authorized_keys.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
@@ -81,7 +80,7 @@ install: all
 	ln -sf $(NSS_OSLOGIN)         $(DESTDIR)$(LIBDIR)/$(NSS_OSLOGIN_SONAME)
 	ln -sf $(NSS_CACHE_OSLOGIN)   $(DESTDIR)$(LIBDIR)/$(NSS_CACHE_OSLOGIN_SONAME)
 	# PAM modules
-	install -m 0644 -t $(DESTDIR)$(PAMDIR) $(PAM_ADMIN) $(PAM_LOGIN)
+	install -m 0644 -t $(DESTDIR)$(PAMDIR) $(PAM_LOGIN)
 	# Binaries
 	install -m 0755 -t $(DESTDIR)$(BINDIR) $(BINARIES)
 	# Manpages

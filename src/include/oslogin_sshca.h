@@ -23,10 +23,6 @@
 #include <sys/syslog.h>
 #include <sys/types.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define SKIP_BYTES(b, l, s)                     \
   {                                             \
     b = b + s;                                  \
@@ -45,9 +41,10 @@ extern "C" {
    ((u_int32_t)(((const u_char *)(p))[2]) << 8) |       \
    (u_int32_t)(((const u_char *)(p))[3]))
 
-int sshca_get_byoid_fingerprint(pam_handle_t* pamh, const char *blob, char **fingerprint);
-
-#ifdef __cplusplus
+namespace oslogin_sshca {
+// The public interface - given a blob with a list of certificates we parse each of
+// them until we find the first fingerprint.
+int FingerPrintFromBlob(const char *blob, char **fingerprint);
 }
-#endif
+
 #endif

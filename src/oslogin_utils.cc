@@ -48,7 +48,10 @@
 using std::string;
 
 // Maximum number of retries for HTTP requests.
-const int kMaxRetries = 1;
+const int kMaxRetries = 3;
+
+// Backoff duration 1 sec between retries.
+const int kBackoffDuration = 1;
 
 // Regex for validating user names.
 static const char kUserNameRegex[] = "^[a-zA-Z0-9._][a-zA-Z0-9._-]{0,31}$";
@@ -392,6 +395,18 @@ size_t OnCurlWrite(void* buf, size_t size, size_t nmemb, void* userp) {
   return 0;
 }
 
+bool ShouldRetry(long http_code) {
+  if (http_code == 200) {
+    // Request returned successfully, no need to retry.
+    return false;
+  }
+  if (http_code == 404) {
+    // Metadata key does not exist, no point of retrying.
+    return false;
+  }
+  return true;
+}
+
 bool HttpDo(const string& url, const string& data, string* response, long* http_code) {
   if (response == NULL || http_code == NULL) {
     return false;
@@ -410,6 +425,10 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
       return false;
     }
     do {
+      // Apply backoff strategy before retrying.
+      if (retry_count > 0) {
+        sleep(kBackoffDuration);
+      }
       response_stream.str("");
       response_stream.clear();
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
@@ -428,7 +447,7 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
         return false;
       }
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, http_code);
-    } while (retry_count++ < kMaxRetries && *http_code == 500);
+    } while (retry_count++ < kMaxRetries && ShouldRetry(*http_code));
     curl_slist_free_all(header_list);
   }
   *response = response_stream.str();

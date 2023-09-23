@@ -460,6 +460,12 @@ TEST(GetGroupByTest, GetGroupByGIDSucceeds) {
   ASSERT_EQ(errnop, 0);
 }
 
+TEST(CurlClient, RetryLogic) {
+  ASSERT_FALSE(ShouldRetry(200));
+  ASSERT_FALSE(ShouldRetry(404));
+  ASSERT_TRUE(ShouldRetry(429));
+}
+
 TEST(ParseJsonEmailTest, SuccessfullyParsesEmail) {
   string test_user =
       "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["

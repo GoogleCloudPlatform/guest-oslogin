@@ -1279,7 +1279,8 @@ static bool ApplyPolicy(const char *user_name, string email, const char *policy,
 }
 
 static bool FileExists(const char *file_path) {
-  return access(file_path, F_OK) == 0;
+  struct stat buff;
+  return !stat(file_path, &buff);
 }
 
 static bool CreateGoogleUserFile(string users_filename) {

@@ -186,6 +186,9 @@ size_t OnCurlWrite(void* buf, size_t size, size_t nmemb, void* userp);
 bool HttpGet(const string& url, string* response, long* http_code);
 bool HttpPost(const string& url, const string& data, string* response,
               long* http_code);
+// Based on known MDS status codes returns whether the HTTP request
+// should be retried or not.
+bool ShouldRetry(long http_code);
 
 // Returns whether user_name is a valid OsLogin user name.
 bool ValidateUserName(const string& user_name);

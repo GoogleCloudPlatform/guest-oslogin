@@ -52,12 +52,12 @@ $(NSS_CACHE_OSLOGIN): nss/nss_cache_oslogin.o nss/compat/getpwent_r.o oslogin_ut
 
 # PAM modules
 
-$(PAM_LOGIN): pam/pam_oslogin_login.o oslogin_sshca.o oslogin_utils.o include/oslogin_sshca.h
+$(PAM_LOGIN): pam/pam_oslogin_login.o oslogin_sshca.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -shared $^ -o $@ $(PAMLIBS)
 
 # Utilities.
 
-google_authorized_principals: authorized_principals/authorized_principals.o oslogin_utils.o oslogin_sshca.o include/oslogin_sshca.h
+google_authorized_principals: authorized_principals/authorized_principals.o oslogin_utils.o oslogin_sshca.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 google_authorized_keys: authorized_keys/authorized_keys.o oslogin_utils.o

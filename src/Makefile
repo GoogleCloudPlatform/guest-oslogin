@@ -21,6 +21,26 @@ CRONDIR = /etc/cron.d
 SYSTEMDDIR = /lib/systemd/system
 PRESETDIR = /lib/systemd/system-preset
 
+DEST_LIBDIR = $(LIBDIR)
+DEST_BINDIR = $(BINDIR)
+DEST_PAMDIR = $(PAMDIR)
+DEST_MANDIR = $(MANDIR)
+DEST_SELINUX = /usr/share/selinux/packages
+DEST_CRONDIR = $(CRONDIR)
+DEST_SYSTEMDDIR = $(SYSTEMDDIR)
+DEST_PRESETDIR = $(PRESETDIR)
+
+ifneq ($(DESTDIR),)
+DEST_LIBDIR = $(DESTDIR)/$(LIBDIR)
+DEST_BINDIR = $(DESTDIR)/$(BINDIR)
+DEST_PAMDIR = $(DESTDIR)/$(PAMDIR)
+DEST_MANDIR = $(DESTDIR)/$(MANDIR)
+DEST_SELINUX = $(DESTDIR)/usr/share/selinux/packages
+DEST_CRONDIR = $(DESTDIR)/$(CRONDIR)
+DEST_SYSTEMDDIR = $(DESTDIR)/$(SYSTEMDDIR)
+DEST_PRESETDIR = $(DESTDIR)/$(PRESETDIR)
+endif
+
 NSS_OSLOGIN_SONAME       = libnss_oslogin.so.2
 NSS_CACHE_OSLOGIN_SONAME = libnss_cache_oslogin.so.2
 
@@ -71,37 +91,37 @@ google_oslogin_nss_cache: cache_refresh/cache_refresh.o oslogin_utils.o
 
 install: all
 	# Make dirs
-	install -d $(DESTDIR)$(LIBDIR)
-	install -d $(DESTDIR)$(PAMDIR)
-	install -d $(DESTDIR)$(BINDIR)
-	install -d $(DESTDIR)$(MANDIR)/man8
+	install -d $(DEST_LIBDIR)
+	install -d $(DEST_PAMDIR)
+	install -d $(DEST_BINDIR)
+	install -d $(DEST_MANDIR)/man8
 	# NSS modules
-	install -m 0644 -t $(DESTDIR)$(LIBDIR) $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN)
-	ln -sf $(NSS_OSLOGIN)         $(DESTDIR)$(LIBDIR)/$(NSS_OSLOGIN_SONAME)
-	ln -sf $(NSS_CACHE_OSLOGIN)   $(DESTDIR)$(LIBDIR)/$(NSS_CACHE_OSLOGIN_SONAME)
+	install -m 0644 -t $(DEST_LIBDIR) $(NSS_OSLOGIN) $(NSS_CACHE_OSLOGIN)
+	ln -sf $(NSS_OSLOGIN)         $(DEST_LIBDIR)/$(NSS_OSLOGIN_SONAME)
+	ln -sf $(NSS_CACHE_OSLOGIN)   $(DEST_LIBDIR)/$(NSS_CACHE_OSLOGIN_SONAME)
 	# PAM modules
-	install -m 0644 -t $(DESTDIR)$(PAMDIR) $(PAM_LOGIN)
+	install -m 0644 -t $(DEST_PAMDIR) $(PAM_LOGIN)
 	# Binaries
-	install -m 0755 -t $(DESTDIR)$(BINDIR) $(BINARIES)
+	install -m 0755 -t $(DEST_BINDIR) $(BINARIES)
 	# Manpages
-	install -m 0644 -t $(DESTDIR)$(MANDIR)/man8 $(TOPDIR)/man/nss-oslogin.8 $(TOPDIR)/man/nss-cache-oslogin.8
-	gzip -9f $(DESTDIR)$(MANDIR)/man8/nss-oslogin.8
-	gzip -9f $(DESTDIR)$(MANDIR)/man8/nss-cache-oslogin.8
-	ln -sf nss-oslogin.8.gz       $(DESTDIR)$(MANDIR)/man8/$(NSS_OSLOGIN_SONAME).8.gz
-	ln -sf nss-cache-oslogin.8.gz $(DESTDIR)$(MANDIR)/man8/$(NSS_CACHE_OSLOGIN_SONAME).8.gz
+	install -m 0644 -t $(DEST_MANDIR)/man8 $(TOPDIR)/man/nss-oslogin.8 $(TOPDIR)/man/nss-cache-oslogin.8
+	gzip -9f $(DEST_MANDIR)/man8/nss-oslogin.8
+	gzip -9f $(DEST_MANDIR)/man8/nss-cache-oslogin.8
+	ln -sf nss-oslogin.8.gz       $(DEST_MANDIR)/man8/$(NSS_OSLOGIN_SONAME).8.gz
+	ln -sf nss-cache-oslogin.8.gz $(DEST_MANDIR)/man8/$(NSS_CACHE_OSLOGIN_SONAME).8.gz
 ifdef INSTALL_SELINUX
 	# SELinux policy package
-	install -d $(DESTDIR)/usr/share/selinux/packages
-	install -m 0644 -t $(DESTDIR)/usr/share/selinux/packages $(TOPDIR)/selinux/oslogin.pp
+	install -d $(DEST_SELINUX)
+	install -m 0644 -t $(DEST_SELINUX) $(TOPDIR)/selinux/oslogin.pp
 endif
 ifdef INSTALL_CRON
 	# Cache refresh cron
-	install -d $(DESTDIR)$(CRONDIR)
-	install -m 0644 $(TOPDIR)/cron.d $(DESTDIR)$(CRONDIR)/google-compute-engine-oslogin
+	install -d $(DEST_CRONDIR)
+	install -m 0644 $(TOPDIR)/cron.d $(DEST_CRONDIR)/google-compute-engine-oslogin
 else
 	# Cache refresh systemd timer
-	install -d $(DESTDIR)$(SYSTEMDDIR)
-	install -m 0644 -t $(DESTDIR)$(SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.timer $(TOPDIR)/google-oslogin-cache.service
-	install -d $(DESTDIR)$(PRESETDIR)
-	install -m 0644 -t $(DESTDIR)$(PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
+	install -d $(DEST_SYSTEMDDIR)
+	install -m 0644 -t $(DEST_SYSTEMDDIR) $(TOPDIR)/google-oslogin-cache.timer $(TOPDIR)/google-oslogin-cache.service
+	install -d $(DEST_PRESETDIR)
+	install -m 0644 -t $(DEST_PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif

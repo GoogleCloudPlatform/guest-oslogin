@@ -1407,4 +1407,35 @@ const char *FileName(const char *file_path) {
 
   return file_path;
 }
+
+const char * getMetadataServerUrl() {
+    auto defaultUrl = "http://169.254.169.254/computeMetadata/v1/oslogin/";
+    std::ifstream ifs("/etc/google_oslogin.conf");
+    string endpointUrl;
+    if (!ifs.is_open()) {
+        return defaultUrl;     // no config, use hardcoded endpoint
+    }
+    string line;
+    std::getline(ifs, line);
+    if (line.empty())
+        return defaultUrl;
+    auto delimiterPos = line.find(":");
+    if (string::npos == delimiterPos)
+        return defaultUrl;
+    auto name = line.substr(0, delimiterPos);
+    if (name != "endpoint")
+        return defaultUrl;
+    size_t valueStartPos = line.find_first_not_of(" \t", delimiterPos + 1);
+    if (string::npos == valueStartPos)
+        return defaultUrl;
+    auto value = line.substr(valueStartPos);
+    if (!Regex::regex_match(value, Regex::regex("^[a-z0-9\\.]+(:[0-9]+)?$")))
+        return defaultUrl;
+    string endpoint = "http://" + value + "/computeMetadata/v1/oslogin/";
+    char * url = new char[endpoint.size() + 1]();
+    strncpy(url, endpoint.c_str(), endpoint.size() + 1);
+    return url;
+}
+
+const char * kMetadataServerUrl = getMetadataServerUrl();
 }  // namespace oslogin_utils

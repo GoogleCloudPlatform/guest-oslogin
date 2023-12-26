@@ -1408,3 +1408,60 @@ const char *FileName(const char *file_path) {
   return file_path;
 }
 }  // namespace oslogin_utils
+
+std::ostream &operator<<(std::ostream &output, volatile const char * c) {
+    std::string buff;
+    for (volatile const char* pc = c ; *pc != 0; ++pc) {
+        buff.push_back(*pc);
+    }
+    output << buff;
+    return output;
+}
+
+namespace oslogin_utils {
+    volatile const char * kMetadataServerUrl = const_cast<volatile const char *>("http://169.254.169.254/computeMetadata/v1/oslogin/");
+    struct StaticInit {
+        StaticInit() {
+            auto configPath = "/etc/google_oslogin.conf";
+            std::ifstream ifs(configPath);
+            string endpointUrl;
+            if (!ifs.is_open()) {
+                return;     // no config, use hardcoded endpoint
+            }
+            string line;
+            std::getline(ifs, line);
+            if (line.empty()) {
+                std::cerr << "Oslogin config empty" << std::endl;
+                return;
+            }
+            auto delimiterPos = line.find(":");
+            if (string::npos == delimiterPos) {
+                std::cerr << "Invalid config " << configPath << std::endl;
+                return;
+            }
+            auto name = line.substr(0, delimiterPos);
+            if (name != "endpoint") {
+                std::cerr << "No oslogin endpoint in config" << std::endl;
+                return;
+            }
+            size_t valueStartPos = line.find_first_not_of(" \t", delimiterPos + 1);
+            if (string::npos == valueStartPos) {
+                std::cerr << "No oslogin endpoint in config" << std::endl;
+                return;
+            }
+            auto value = line.substr(valueStartPos);
+            if (!std::regex_match(value, std::regex("^[a-z0-9\\.]+(:[0-9]+)?$"))) {
+                std::cerr << "Oslogin endpoint invalid: " << value << std::endl;
+                return;
+            }
+            string endpoint = "http://" + value + "/computeMetadata/v1/oslogin/";
+            char * endpointPtr = new char[endpoint.size() + 1]();
+            strncpy(endpointPtr, endpoint.c_str(), endpoint.size() + 1);
+            kMetadataServerUrl = endpointPtr;
+//            std::cerr << "\nendpointPtr: " << endpointPtr << std::endl;
+//            std::cerr << "kMetadataServerUrl: " << kMetadataServerUrl << std::endl;
+       }
+    };
+    StaticInit g_staticInit;
+}
+

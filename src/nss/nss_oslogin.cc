@@ -56,7 +56,7 @@ _nss_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
   BufferManager buffer_manager(buffer, buflen);
   std::stringstream url;
 
-//  std::cerr << "using metadata url: [" << kMetadataServerUrl << "]" << std::endl;
+  //std::cerr << "using metadata url: [" << kMetadataServerUrl << "]" << std::endl;
   url << kMetadataServerUrl << "users?uid=" << uid;
 
   string response;

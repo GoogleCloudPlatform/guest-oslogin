@@ -48,12 +48,10 @@
 using std::string;
 using std::vector;
 
-extern std::ostream &operator<<(std::ostream &output, volatile const char * c);
-
 namespace oslogin_utils {
 
 // Metadata server URL.
-extern volatile const char * kMetadataServerUrl; // = "http://169.254.169.254/computeMetadata/v1/oslogin/";
+extern const char * kMetadataServerUrl;
 
 // BufferManager encapsulates and manages a buffer and length. This class is not
 // thread safe.

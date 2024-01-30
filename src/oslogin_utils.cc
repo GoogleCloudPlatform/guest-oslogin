@@ -1279,18 +1279,18 @@ static bool ApplyPolicy(const char *user_name, string email, const char *policy,
   long http_code = 0;
   // Invalid user, just leave from here - the principal will not be allowed/authorized.
   if (!HttpGet(url.str(), &response, &http_code)) {
-    SysLogErr("Failed to validate organization user %s has login permission.", user_name);
+    SysLogErr("Failed to validate that OS Login user %s has %s permission.", user_name, policy);
     return false;
   }
 
   if (http_code != 200) {
-    SysLogErr("Failed to validate organization user %s has login permission, "
-              "got HTTP response code: %lu", user_name, http_code);
+    SysLogErr("Failed to validate that OS Login user %s has %s permission; "
+              "got HTTP response code: %lu", user_name, policy, http_code);
     return false;
   }
 
   if (!ParseJsonToSuccess(response)) {
-    SysLogErr("Organization user %s does not have login permission.", user_name);
+    SysLogErr("OS Login user %s does not have %s permission.", user_name, policy);
     return false;
   }
 

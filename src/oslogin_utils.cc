@@ -589,7 +589,7 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     json_object* group = json_object_array_get_idx(groups, idx);
 
     json_object* gid;
-    json_object*name;
+    json_object* name;
     if (!json_object_object_get_ex(group, "gid", &gid)) {
       SysLogErr("failed to parse gid from group %s", json_object_get_string(group));
       goto cleanup;
@@ -606,13 +606,11 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     // an integer. We can't rely on type check as it may be a string in the API.
     // Also 0 is invalid because it creates a 'root group'.
     if (g.gid == 0) {
-      SysLogErr("failed to convert \"%s\" to an integer", json_object_get_string(gid));
       goto cleanup;
     }
 
     g.name = json_object_get_string(name);
     if (g.name == "") {
-      SysLogErr("failed to parse name value from %s", json_object_get_string(name));
       goto cleanup;
     }
 

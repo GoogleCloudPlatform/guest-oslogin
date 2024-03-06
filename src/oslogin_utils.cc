@@ -205,6 +205,8 @@ json_object* ParseJsonRoot(const string& json) {
     SysLogErr("Failed to parse root JSON element: \"%s\", from input \"%s\"",
               error_message, json);
   }
+
+  json_tokener_free(tok);
   return root;
 }
 

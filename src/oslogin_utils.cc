@@ -196,11 +196,11 @@ bool NssCache::GetNextGroup(BufferManager* buf, struct group* result, int* errno
 // Other parsing functions can be found later, in the "JSON Parsing" section.
 json_object* ParseJsonRoot(const string& json) {
   json_object* root = NULL;
-  struct json_tokener tok;
+  struct json_tokener* tok = json_tokener_new();
 
-  root = json_tokener_parse_ex(&tok, json.c_str(), -1);
+  root = json_tokener_parse_ex(tok, json.c_str(), -1);
   if (root == NULL) {
-    enum json_tokener_error jerr = json_tokener_get_error(&tok);
+    enum json_tokener_error jerr = json_tokener_get_error(tok);
     string error_message = json_tokener_error_desc(jerr);
     SysLogErr("Failed to parse root JSON element: \"%s\", from input \"%s\"",
               error_message, json);

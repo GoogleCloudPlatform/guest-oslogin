@@ -22,6 +22,7 @@
 #include <compat.h>
 #include <oslogin_utils.h>
 
+using oslogin_utils::AuthOptions;
 using oslogin_utils::ContinueSession;
 using oslogin_utils::GetUser;
 using oslogin_utils::ParseJsonToChallenges;
@@ -31,6 +32,32 @@ using oslogin_utils::StartSession;
 using oslogin_utils::ValidateUserName;
 
 extern "C" {
+
+// pm_sm_acct_mgmt is the account management PAM implementation for non-admin users (or users
+// without the proper loginAdmin policy). This account management module is intended for custom
+// configuration handling only, where users need a way to in their stack configurations to
+// differentiate a OS Login user. The Google Guest Agent will not manage the lifecycle of
+// this module, it will not add this to the stack as part of the standard/default configuration
+// set.
+PAM_EXTERN int
+pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
+  struct AuthOptions opts;
+  const char *user_name;
+  string user_response;
+
+  if (pam_get_user(pamh, &user_name, NULL) != PAM_SUCCESS) {
+    PAM_SYSLOG(pamh, LOG_INFO, "Could not get pam user.");
+    return PAM_PERM_DENIED;
+  }
+
+  opts = { 0 };
+
+  if (!AuthorizeUser(user_name, opts, &user_response)) {
+    return PAM_PERM_DENIED;
+  }
+
+  return PAM_SUCCESS;
+}
 
 PAM_EXTERN int
 pam_sm_setcred(pam_handle_t* pamh, int flags, int argc, const char** argv) {

@@ -1388,6 +1388,9 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
     }
   } else {
     remove(sudoers_filename.c_str());
+    if (opts.admin_policy_required) {
+      return false;
+    }
   }
 
   return true;

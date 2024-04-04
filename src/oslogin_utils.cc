@@ -192,8 +192,9 @@ bool NssCache::GetNextGroup(BufferManager* buf, struct group* result, int* errno
   return ParseJsonToGroup(cached_passwd, result, buf, errnop);
 }
 
-// ParseJsonRoot must be declared early here, before it is used.
-// Other parsing functions can be found later, in the "JSON Parsing" section.
+// ParseJsonRoot is declared early here, away from the other parsing functions
+// found later (in the "JSON Parsing" section), so LoadJsonUsersToCache can
+// take advantage of the improved error handling ParseJsonRoot offers.
 json_object* ParseJsonRoot(const string& json) {
   json_object* root = NULL;
   struct json_tokener* tok = json_tokener_new();
@@ -576,12 +577,11 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     return ret;
   }
   json_object* groups;
-  json_type groupType;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
     SysLogErr("failed to parse POSIX groups from \"%s\"", json);
     goto cleanup;
   }
-  groupType = json_object_get_type(groups);
+  json_type groupType = json_object_get_type(groups);
   if (groupType != json_type_array) {
     SysLogErr("parsed unexpected type for field \"posixGroups\"; "
               "want a list, got %s", groupType);
@@ -591,11 +591,11 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     json_object* group = json_object_array_get_idx(groups, idx);
 
     json_object* gid;
-    json_object* name;
     if (!json_object_object_get_ex(group, "gid", &gid)) {
       SysLogErr("failed to parse gid from group %s", json_object_get_string(group));
       goto cleanup;
     }
+    json_object* name;
     if (!json_object_object_get_ex(group, "name", &name)) {
       SysLogErr("failed to parse name from group %s", json_object_get_string(group));
       goto cleanup;
@@ -627,6 +627,7 @@ cleanup:
 
 bool ParseJsonToGroup(const string& json, struct group* result, BufferManager*
                       buf, int* errnop) {
+  bool ret = false;
   *errnop = EINVAL;
   int gr_gid = 65535;
 
@@ -635,13 +636,11 @@ bool ParseJsonToGroup(const string& json, struct group* result, BufferManager*
     return false;
   }
 
-  bool ret = false;
-
   json_object* gid;
-  json_object* name;
   if (!json_object_object_get_ex(group, "gid", &gid)) {
     goto cleanup;
   }
+  json_object* name;
   if (!json_object_object_get_ex(group, "name", &name)) {
     goto cleanup;
   }
@@ -674,7 +673,6 @@ std::vector<string> ParseJsonToSshKeys(const string& json) {
 
   // Locate the sshPublicKeys object.
   json_object* login_profiles;
-  json_object* ssh_public_keys;
   if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
     goto cleanup;
   }
@@ -683,6 +681,7 @@ std::vector<string> ParseJsonToSshKeys(const string& json) {
   }
   login_profiles = json_object_array_get_idx(login_profiles, 0);
 
+  json_object* ssh_public_keys;
   if (!json_object_object_get_ex(login_profiles, "sshPublicKeys", &ssh_public_keys)) {
     goto cleanup;
   }
@@ -743,7 +742,6 @@ std::vector<string> ParseJsonToSshKeysSk(const string& json) {
 
   // Locate the securityKeys array.
   json_object* login_profiles;
-  json_object* security_keys;
   if (!json_object_object_get_ex(root, "loginProfiles", &login_profiles)) {
     goto cleanup;
   }
@@ -753,6 +751,7 @@ std::vector<string> ParseJsonToSshKeysSk(const string& json) {
 
   login_profiles = json_object_array_get_idx(login_profiles, 0);
 
+  json_object* security_keys;
   if (!json_object_object_get_ex(login_profiles, "securityKeys", &security_keys)) {
     goto cleanup;
   }

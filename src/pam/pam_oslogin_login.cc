@@ -111,6 +111,7 @@ pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc,
   }
 
   if (status == "NO_AVAILABLE_CHALLENGES") {
+    PAM_SYSLOG(pamh, LOG_ERR, "User has no two-factor methods enabled.");
     return PAM_PERM_DENIED; // User is not two-factor enabled, deny login.
   }
 

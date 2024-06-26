@@ -422,6 +422,10 @@ bool ShouldRetry(long http_code) {
     // Metadata key does not exist, no point of retrying.
     return false;
   }
+  if (http_code == 400) {
+    // Request parameters are bad, no point of retrying.
+    return false;
+  }
   return true;
 }
 

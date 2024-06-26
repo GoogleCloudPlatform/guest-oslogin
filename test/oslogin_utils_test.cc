@@ -463,6 +463,7 @@ TEST(GetGroupByTest, GetGroupByGIDSucceeds) {
 TEST(CurlClient, RetryLogic) {
   ASSERT_FALSE(ShouldRetry(200));
   ASSERT_FALSE(ShouldRetry(404));
+  ASSERT_FALSE(ShouldRetry(400));
   ASSERT_TRUE(ShouldRetry(429));
 }
 

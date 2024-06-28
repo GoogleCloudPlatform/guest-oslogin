@@ -3,6 +3,11 @@ TOPDIR = $(realpath ..)
 
 CPPFLAGS = -Iinclude -I/usr/include/json-c -I$(TOPDIR)/third_party/include
 FLAGS = -fPIC -Wall -g
+
+ifneq ($(CUSTOM_METADATA_ENDPOINT),)
+FLAGS += -DCUSTOM_METADATA_ENDPOINT=$(CUSTOM_METADATA_ENDPOINT)
+endif
+
 CFLAGS = $(FLAGS) -Wstrict-prototypes
 CXXFLAGS = $(FLAGS)
 

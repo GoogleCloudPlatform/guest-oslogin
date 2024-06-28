@@ -51,8 +51,15 @@ using std::vector;
 namespace oslogin_utils {
 
 // Metadata server URL.
+#ifdef CUSTOM_METADATA_ENDPOINT
+#define Q(x) #x
+#define QUOTE(x) Q(x)
+static const char kMetadataServerUrl[] =
+    "http://" QUOTE(CUSTOM_METADATA_ENDPOINT) "/computeMetadata/v1/oslogin/";
+#else
 static const char kMetadataServerUrl[] =
     "http://169.254.169.254/computeMetadata/v1/oslogin/";
+#endif /* CUSTOM_METADATA_ENDPOINT */
 
 // BufferManager encapsulates and manages a buffer and length. This class is not
 // thread safe.

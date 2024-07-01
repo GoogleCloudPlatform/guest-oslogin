@@ -3,10 +3,10 @@ TOPDIR = $(realpath ..)
 
 CPPFLAGS = -Iinclude -I/usr/include/json-c -I$(TOPDIR)/third_party/include
 FLAGS = -fPIC -Wall -g
-CFLAGS = $(FLAGS) -Wstrict-prototypes
-CXXFLAGS = $(FLAGS)
+CFLAGS := $(CFLAGS) $(FLAGS) -Wstrict-prototypes
+CXXFLAGS := $(CXXFLAGS) $(FLAGS)
 
-LDFLAGS = -shared -Wl,-soname,$(SONAME)
+LDFLAGS := $(LDFLAGS) -shared -Wl,-soname,$(SONAME)
 LDLIBS = -lcurl -ljson-c
 PAMLIBS = -lpam $(LDLIBS)
 

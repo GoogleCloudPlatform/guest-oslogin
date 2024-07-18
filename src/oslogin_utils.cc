@@ -204,7 +204,7 @@ json_object* ParseJsonRoot(const string& json) {
     enum json_tokener_error jerr = json_tokener_get_error(tok);
     string error_message = json_tokener_error_desc(jerr);
     SysLogErr("Failed to parse root JSON element: \"%s\", from input \"%s\"",
-              error_message, json);
+              error_message.c_str(), json.c_str());
   }
 
   json_tokener_free(tok);
@@ -583,7 +583,7 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
   json_object* groups;
   json_type groupType;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
-    SysLogErr("failed to parse POSIX groups from \"%s\"", json);
+    SysLogErr("failed to parse POSIX groups from \"%s\"", json.c_str());
     goto cleanup;
   }
   groupType = json_object_get_type(groups);

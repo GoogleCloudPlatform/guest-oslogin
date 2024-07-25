@@ -1,10 +1,10 @@
 SHELL = /bin/sh
 TOPDIR = $(realpath ..)
 
-CPPFLAGS = -Iinclude -I/usr/include/json-c -I$(TOPDIR)/third_party/include
+CPPFLAGS += -Iinclude -I/usr/include/json-c -I$(TOPDIR)/third_party/include
 FLAGS = -fPIC -Wall -g
-CFLAGS = $(FLAGS) -Wstrict-prototypes
-CXXFLAGS = $(FLAGS)
+CFLAGS += $(FLAGS) -Wstrict-prototypes
+CXXFLAGS += $(FLAGS)
 
 LDFLAGS = -shared -Wl,-soname,$(SONAME)
 LDLIBS = -lcurl -ljson-c

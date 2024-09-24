@@ -1,0 +1,2 @@
+split shared libraries to lib* package
+put shared libraries to multiarch location

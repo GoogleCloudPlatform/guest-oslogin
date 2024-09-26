@@ -1,0 +1,24 @@
+From: Brian Murray <brian@ubuntu.com>
+Date: Fri, 12 Apr 2019 13:23:42 +0200
+Subject: set LDFLAGS to report unresolved symbol references
+
+Origin: Ubuntu
+Forwarded: no
+Last-Update: 2018-11-08
+---
+ src/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Makefile b/src/Makefile
+index 4d1dde1..5f63948 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -6,7 +6,7 @@ FLAGS = -fPIC -Wall -g
+ CFLAGS = $(FLAGS) -Wstrict-prototypes
+ CXXFLAGS = $(FLAGS)
+ 
+-LDFLAGS = -shared -Wl,-soname,$(SONAME)
++LDFLAGS = -shared -Wl,-z,defs -Wl,-soname,$(SONAME)
+ LDLIBS = -lcurl -ljson-c
+ PAMLIBS = -lpam $(LDLIBS)
+ 

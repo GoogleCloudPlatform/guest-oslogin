@@ -42,8 +42,8 @@
 #define Regex boost
 #endif
 
-#include <compat.h>
-#include <oslogin_utils.h>
+#include "include/compat.h"
+#include "include/oslogin_utils.h"
 
 using std::string;
 

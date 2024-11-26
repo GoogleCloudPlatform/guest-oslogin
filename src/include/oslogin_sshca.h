@@ -15,7 +15,7 @@
 #ifndef _OSLOGIN_SSHCA_H_
 #define _OSLOGIN_SSHCA_H_ 1
 
-#include <compat.h>
+#include "include/compat.h"
 #include <ctype.h>
 #include <security/pam_modules.h>
 #include <stdlib.h>

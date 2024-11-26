@@ -19,8 +19,8 @@
 #include <sstream>
 #include <map>
 
-#include <compat.h>
-#include <oslogin_utils.h>
+#include "include/compat.h"
+#include "include/oslogin_utils.h"
 
 using oslogin_utils::AuthOptions;
 using oslogin_utils::ContinueSession;

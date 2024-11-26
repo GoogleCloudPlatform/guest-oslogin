@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <compat.h>
-#include <oslogin_utils.h>
+#include "include/compat.h"
+#include "include/oslogin_utils.h"
 
 #include <curl/curl.h>
 #include <errno.h>

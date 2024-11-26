@@ -25,8 +25,8 @@
 
 #include <fstream>
 
-#include <compat.h>
-#include <oslogin_utils.h>
+#include "include/compat.h"
+#include "include/oslogin_utils.h"
 
 using oslogin_utils::BufferManager;
 using oslogin_utils::MutexLock;

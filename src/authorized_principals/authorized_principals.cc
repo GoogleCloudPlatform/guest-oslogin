@@ -16,8 +16,8 @@
 
 #include <signal.h>
 
-#include <oslogin_utils.h>
-#include <oslogin_sshca.h>
+#include "include/oslogin_utils.h"
+#include "include/oslogin_sshca.h"
 
 using std::cout;
 using std::endl;

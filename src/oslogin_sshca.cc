@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <oslogin_sshca.h>
-#include <oslogin_utils.h>
+#include "include/oslogin_sshca.h"
+#include "include/oslogin_utils.h"
 #include <openbsd.h>
 
 using oslogin_utils::SysLogErr;

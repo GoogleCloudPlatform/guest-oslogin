@@ -607,7 +607,10 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
     }
 
     Group g;
-    g.gid = json_object_get_int64(gid);
+    // We use json_object_get_int64 because GIDs are unsigned and may use all
+    // 32 bits, but there is no json_object_get_uint32.
+    // Because the GID should never exceed 32 bits, truncation is safe.
+    g.gid = (uint32_t)json_object_get_int64(gid);
 
     // get_int64 will confusingly return 0 if the string can't be converted to
     // an integer. We can't rely on type check as it may be a string in the API.
@@ -1120,7 +1123,7 @@ bool GetGroupByName(string name, struct group* result, BufferManager* buf, int* 
   return true;
 }
 
-bool GetGroupByGID(int gid, struct group* result, BufferManager* buf, int* errnop) {
+bool GetGroupByGID(uint32_t gid, struct group* result, BufferManager* buf, int* errnop) {
   std::stringstream url;
   std::vector<Group> groups;
 

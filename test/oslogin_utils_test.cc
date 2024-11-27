@@ -360,6 +360,7 @@ TEST(ParseJsonToGroupsTest, ParseJsonToGroupsSucceedsWithHighGid) {
   std::vector<Group> groups;
   ASSERT_TRUE(ParseJsonToGroups(test_group, &groups));
   ASSERT_EQ(groups[0].gid, 4294967295);
+  ASSERT_GT(groups[0].gid, 0);
   ASSERT_EQ(groups[0].name, "demo");
 }
 

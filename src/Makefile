@@ -50,7 +50,7 @@ NSS_CACHE_OSLOGIN        = libnss_cache_oslogin-$(VERSION).so
 PAM_ADMIN                = pam_oslogin_admin.so
 PAM_LOGIN                = pam_oslogin_login.so
 
-BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk google_authorized_principals
+BINARIES = google_oslogin_nss_cache google_authorized_keys google_authorized_keys_sk google_authorized_principals oslogin_sshca
 
 .PHONY: all clean install
 .DEFAULT_GOAL := all

@@ -14,7 +14,7 @@
 
 #include "include/oslogin_sshca.h"
 #include "include/oslogin_utils.h"
-#include <base64.h>
+#include "openbsd-compat/base64.h"
 
 using oslogin_utils::SysLogErr;
 

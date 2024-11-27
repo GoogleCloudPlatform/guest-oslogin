@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 TOPDIR = $(realpath ..)
 
-CPPFLAGS += -I. -I/usr/include/json-c -I$(TOPDIR)/third_party/include
+CPPFLAGS += -I. -I/usr/include/json-c
 FLAGS = -fPIC -Wall -g
 CFLAGS += $(FLAGS) -Wstrict-prototypes
 CXXFLAGS += $(FLAGS)

@@ -14,10 +14,11 @@
 
 #include <errno.h>
 #include <gtest/gtest.h>
-#include <oslogin_sshca.h>
-#include <oslogin_utils.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "oslogin_sshca.h"
+#include "oslogin_utils.h"
 
 using std::string;
 using std::vector;

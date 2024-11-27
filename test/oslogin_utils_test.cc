@@ -15,9 +15,10 @@
 // Requires libgtest-dev and gtest compiled and installed.
 #include <errno.h>
 #include <gtest/gtest.h>
-#include <oslogin_utils.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "oslogin_utils.h"
 
 using std::string;
 using std::vector;
@@ -457,7 +458,7 @@ TEST(GetGroupByTest, GetGroupByGIDSucceeds) {
   int errnop = 0;
 
   struct group grp = {};
-  ASSERT_TRUE(GetGroupByGID(123452, &grp, &buf, &errnop));
+  ASSERT_TRUE(GetGroupByGID((uint32_t)123452, &grp, &buf, &errnop));
   ASSERT_EQ(errnop, 0);
 }
 

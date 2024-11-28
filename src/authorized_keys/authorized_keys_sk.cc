@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
     goto fail;
   }
 
-  sig = { 0 };
+  sig = {};
   sig.sa_handler = signal_handler;
   sigemptyset(&sig.sa_mask);
 

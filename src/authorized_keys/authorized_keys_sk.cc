@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
   user_name = argv[1];
   is_sa = (strncmp(user_name, "sa_", 3) == 0);
 
-  opts = { 0 };
+  opts = {};
   opts.security_key = true;
 
   if (AuthorizeUser(user_name, opts, &user_response)) {

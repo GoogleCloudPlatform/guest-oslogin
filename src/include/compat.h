@@ -53,7 +53,7 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #else /* __FreeBSD__ */
 
-#include <security/pam_ext.h>
+#include <security/pam_ext.h>  // IWYU pragma: keep
 
 #define OSLOGIN_PASSWD_CACHE_PATH "/etc/oslogin_passwd.cache"
 #define OSLOGIN_GROUP_CACHE_PATH "/etc/oslogin_group.cache"

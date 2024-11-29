@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <errno.h>
 #include <grp.h>
 #include <nss.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <syslog.h>
 #include <sys/param.h>
 #include <sys/stat.h>

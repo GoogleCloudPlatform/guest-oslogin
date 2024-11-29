@@ -21,9 +21,13 @@
 #include <syslog.h>
 #include <string.h>
 #include <unistd.h>
-#include <sstream>
 
+#include <cstdint>
+#include <cstdio>
 #include <fstream>
+#include <ios>
+#include <string>
+#include <vector>
 
 #include "include/compat.h"
 #include "include/oslogin_utils.h"

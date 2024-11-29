@@ -13,11 +13,18 @@
 // limitations under the License.
 
 #define PAM_SM_ACCOUNT
+
+#include <security/pam_ext.h>
 #include <security/pam_modules.h>
+#include <security/_pam_types.h>
 #include <syslog.h>
 
-#include <sstream>
+#include <cstddef>
+#include <cstdio>
 #include <map>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "include/compat.h"
 #include "include/oslogin_utils.h"

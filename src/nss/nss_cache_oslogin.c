@@ -14,15 +14,18 @@
 
 // An NSS module which adds supports for file /etc/oslogin_passwd.cache
 
+#include <errno.h>
 #include <nss.h>
-#include "include/nss_cache_oslogin.h"
-#include "include/compat.h"
-
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <time.h>
 
+#include "include/nss_cache_oslogin.h"
+#include "include/compat.h"
+
 // Locking implementation: use pthreads.
-#include <pthread.h>
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 #define NSS_CACHE_OSLOGIN_LOCK() \
   do {                           \

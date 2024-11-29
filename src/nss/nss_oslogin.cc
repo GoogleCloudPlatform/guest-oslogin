@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/compat.h"
-#include "include/oslogin_utils.h"
-
-#include <curl/curl.h>
 #include <errno.h>
 #include <grp.h>
 #include <nss.h>
@@ -27,9 +23,14 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
+
+#include "include/compat.h"
+#include "include/oslogin_utils.h"
 
 #define MAXBUFSIZE 32768
 

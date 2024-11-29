@@ -14,9 +14,13 @@
 
 // Requires libcurl4-openssl-dev, libjson-c5, and libjson-c-dev
 #include <curl/curl.h>
+#include <curl/easy.h>
 #include <errno.h>
 #include <grp.h>
 #include <json.h>
+#include <json_tokener.h>
+#include <json_types.h>
+#include <json_object.h>
 #include <nss.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,13 +28,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include <cstdint>
 #include <cstring>
 #include <cstdarg>
 #include <iostream>
 #include <sstream>
 #include <fstream>
-
-#include <json_object.h>
+#include <string>
+#include <vector>
 
 #if defined(__clang__) || __GNUC__ > 4 || \
     (__GNUC__ == 4 &&                     \

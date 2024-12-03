@@ -118,10 +118,15 @@ static char Pad64 = '=';
 	   characters followed by one "=" padding character.
    */
 
+#include <string.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <stddef.h>
+
 int
-b64_pton(char const *src, u_char *target, size_t targsize)
+b64_pton(char const *src, uint8_t *target, size_t targsize)
 {
-	u_int tarindex, state;
+	unsigned int tarindex, state;
 	int ch;
 	char *pos;
 
@@ -205,6 +210,7 @@ b64_pton(char const *src, u_char *target, size_t targsize)
 			ch = *src++;		/* Skip the = */
 			/* Fall through to "single trailing =" case. */
 			/* FALLTHROUGH */
+                        [[fallthrough]];
 
 		case 3:		/* Valid, means two bytes of info */
 			/*

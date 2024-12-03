@@ -15,9 +15,10 @@
 // Requires libgtest-dev and gtest compiled and installed.
 #include <errno.h>
 #include <gtest/gtest.h>
-#include <oslogin_utils.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "oslogin_utils.h"
 
 using std::string;
 using std::vector;
@@ -360,6 +361,7 @@ TEST(ParseJsonToGroupsTest, ParseJsonToGroupsSucceedsWithHighGid) {
   std::vector<Group> groups;
   ASSERT_TRUE(ParseJsonToGroups(test_group, &groups));
   ASSERT_EQ(groups[0].gid, 4294967295);
+  ASSERT_GT(groups[0].gid, 0);
   ASSERT_EQ(groups[0].name, "demo");
 }
 
@@ -456,7 +458,7 @@ TEST(GetGroupByTest, GetGroupByGIDSucceeds) {
   int errnop = 0;
 
   struct group grp = {};
-  ASSERT_TRUE(GetGroupByGID(123452, &grp, &buf, &errnop));
+  ASSERT_TRUE(GetGroupByGID((uint32_t)123452, &grp, &buf, &errnop));
   ASSERT_EQ(errnop, 0);
 }
 

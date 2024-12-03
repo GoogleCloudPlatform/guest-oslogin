@@ -15,10 +15,11 @@
 // Requires libgtest-dev and gtest compiled and installed.
 #include <errno.h>
 #include <gtest/gtest.h>
-#include "../src/nss/new_nss_oslogin.c" // yes, the c file.
 #include <nss.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "../src/nss/new_nss_oslogin.c" // yes, the c file.
 
 TEST(ParserTest, TestParsepasswd) {
   int res;

@@ -13,6 +13,11 @@
 // limitations under the License.
 
 #include <security/pam_modules.h>
+#include <security/_pam_types.h>
+
+#include <cstddef>
+#include <cstdio>
+#include <string>
 
 #include "include/compat.h"
 #include "include/oslogin_utils.h"

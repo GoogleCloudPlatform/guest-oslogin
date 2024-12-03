@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
+#include <cstring>
+
 #include "include/oslogin_sshca.h"
 #include "include/oslogin_utils.h"
 #include "openbsd-compat/base64.h"

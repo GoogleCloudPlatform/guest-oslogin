@@ -18,9 +18,6 @@
 #include <errno.h>
 #include <grp.h>
 #include <json.h>
-#include <json_tokener.h>
-#include <json_types.h>
-#include <json_object.h>
 #include <nss.h>
 #include <stdio.h>
 #include <stdlib.h>

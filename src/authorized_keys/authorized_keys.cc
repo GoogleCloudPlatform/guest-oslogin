@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     goto fail;
   }
 
-  sig = { 0 };
+  sig = {};
   sig.sa_handler = signal_handler;
   sigemptyset(&sig.sa_mask);
 
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
   }
 
   user_name = argv[1];
-  opts = { 0 };
+  opts = {};
 
   if (AuthorizeUser(user_name, opts, &user_response)) {
     // At this point, we've verified the user can log in. Grab the ssh keys from

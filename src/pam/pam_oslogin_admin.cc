@@ -45,7 +45,7 @@ pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv) {
     return PAM_PERM_DENIED;
   }
 
-  opts = { 0 };
+  opts = {};
   opts.admin_policy_required = true;
 
   if (!AuthorizeUser(user_name, opts, &user_response)) {

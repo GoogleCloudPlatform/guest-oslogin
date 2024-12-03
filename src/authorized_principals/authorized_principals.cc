@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
   const char *progname = FileName(argv[0]);
 
   fp_len = 0;
-  opts = { 0 };
+  opts = {};
   user_name = cert = fingerprint = NULL;
 
   SetupSysLog(SYSLOG_IDENT, progname);
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     goto fail;
   }
 
-  sig = { 0 };
+  sig = {};
   sig.sa_handler = signal_handler;
   sigemptyset(&sig.sa_mask);
 

@@ -206,7 +206,7 @@ json_object* ParseJsonRoot(const string& json) {
     enum json_tokener_error jerr = json_tokener_get_error(tok);
     string error_message = json_tokener_error_desc(jerr);
     SysLogErr("Failed to parse root JSON element: \"%s\", from input \"%s\"",
-              error_message, json);
+              error_message.c_str(), json.c_str());
   }
 
   json_tokener_free(tok);

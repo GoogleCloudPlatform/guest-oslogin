@@ -585,7 +585,7 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
   json_object* groups;
   json_type groupType;
   if (!json_object_object_get_ex(root, "posixGroups", &groups)) {
-    SysLogErr("failed to parse POSIX groups from \"%s\"", json);
+    SysLogErr("failed to parse POSIX groups from \"%s\"", json.c_str());
     goto cleanup;
   }
   groupType = json_object_get_type(groups);

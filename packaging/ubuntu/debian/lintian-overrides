@@ -1,0 +1,8 @@
+# prerm is not exactly empty, it always succeed fixing broken old ones
+google-compute-engine-oslogin: maintainer-script-empty prerm
+# upstream does not provide manpages for those instrastructure scripts
+google-compute-engine-oslogin: no-manual-page [usr/bin/google_authorized_keys]
+google-compute-engine-oslogin: no-manual-page [usr/bin/google_authorized_keys_sk]
+google-compute-engine-oslogin: no-manual-page [usr/bin/google_oslogin_nss_cache]
+# wontfix, ther is no plan to split the shared libraries out of the package
+google-compute-engine-oslogin: package-name-doesnt-match-sonames libnss-cache-oslogin2 libnss-oslogin2

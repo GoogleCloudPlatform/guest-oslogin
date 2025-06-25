@@ -14,11 +14,16 @@
 
 // An NSS module which adds supports for file /etc/oslogin_passwd.cache
 //
-// This version has been rewritten to be thread-safe and fully reentrant.
-// - Lookup functions (getpwnam, getpwuid, etc.) are stateless. They open,
-//   read, and close the cache file on every call.
-// - Enumeration functions (getpwent, getgrent, etc.) use thread-local
-//   storage for their file handles to prevent interference between threads.
+// This version is rewritten to be thread-safe and fully reentrant.
+//
+// Lookup functions (getpwnam_r, getpwuid_r, etc.) are implemented to be
+// completely stateless. They open, read, and close the cache file on every
+// call, preventing any side effects.
+//
+// Enumeration functions (setpwent, getpwent_r, endpwent) are inherently
+// stateful by NSS design. To manage this state safely in a multithreaded
+// environment, they use thread-local storage (`__thread`) for their file
+// handles. This isolates each thread's enumeration, preventing interference.
 
 #include <errno.h>
 #include <nss.h>
@@ -30,9 +35,11 @@
 #include "include/nss_cache_oslogin.h"
 #include "include/compat.h"
 
-// Use thread-local storage for enumeration state. This ensures that each thread
-// gets its own file pointer, preventing race conditions and interference
-// from concurrent lookups.
+// The NSS enumeration API (`set...ent`, `get...ent`, `end...ent`) is stateful.
+// To ensure thread safety, the file pointers for enumeration must be
+// thread-local. This gives each thread its own private file handle, preventing
+// race conditions and interference from other threads or from the stateless
+// lookup functions.
 static __thread FILE *p_file_thread = NULL;
 static __thread FILE *g_file_thread = NULL;
 
@@ -62,7 +69,7 @@ _nss_cache_oslogin_ent_bad_return_code(int errnoval) {
 
 // _nss_cache_oslogin_setpwent()
 // Called by NSS to open the passwd file for enumeration. Uses a thread-local
-// file pointer.
+// file pointer to maintain state for the calling thread.
 enum nss_status
 _nss_cache_oslogin_setpwent(int stayopen) {
     DEBUG("Opening %s for enumeration\n", OSLOGIN_PASSWD_CACHE_PATH);
@@ -89,8 +96,8 @@ _nss_cache_oslogin_endpwent(void) {
 }
 
 // _nss_cache_oslogin_getpwent_r()
-// Called by NSS to get the next entry from the passwd file. Uses the
-// thread-local file pointer.
+// Called by NSS to get the next entry from the passwd file, using the
+// thread-local file pointer established by `setpwent`.
 enum nss_status
 _nss_cache_oslogin_getpwent_r(struct passwd *result, char *buffer,
                                size_t buflen, int *errnop) {
@@ -115,7 +122,8 @@ _nss_cache_oslogin_getpwent_r(struct passwd *result, char *buffer,
 }
 
 // _nss_cache_oslogin_getpwuid_r()
-// Stateless lookup for a user by UID. Opens and closes the file on each call.
+// Stateless lookup for a user by UID. Opens, reads, and closes the file
+// on each call. It has no side effects and does not interfere with enumerations.
 enum nss_status
 _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
                                char *buffer, size_t buflen, int *errnop) {
@@ -146,7 +154,7 @@ _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
 }
 
 // _nss_cache_oslogin_getpwnam_r()
-// Stateless lookup for a user by name. Opens and closes the file on each call.
+// Stateless lookup for a user by name.
 enum nss_status
 _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
                                char *buffer, size_t buflen, int *errnop) {
@@ -209,7 +217,7 @@ _nss_cache_oslogin_endgrent(void) {
 }
 
 // _nss_cache_oslogin_getgrent_r()
-// Called by NSS to get the next entry from the group file. Uses the
+// Called by NSS to get the next entry from the group file, using the
 // thread-local file pointer.
 enum nss_status
 _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
@@ -239,14 +247,13 @@ _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
 enum nss_status
 _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
                                char *buffer, size_t buflen, int *errnop) {
-    // First, check for user-private-group (UPG) where gid == uid.
-    // This calls the stateless getpwuid_r, so it won't interfere with anything.
+    // First, check for user-private-group (UPG). This calls the stateless
+    // _nss_cache_oslogin_getpwuid_r, so it won't cause side effects.
     struct passwd user;
     size_t userbuflen = 1024;
     char userbuf[userbuflen];
     if (_nss_cache_oslogin_getpwuid_r(gid, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
         result->gr_gid = user.pw_gid;
-        // ... (rest of UPG logic from original file)
         char* string = buffer;
         strncpy(string, "x", 2);
         result->gr_passwd = string;
@@ -299,7 +306,6 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
     char userbuf[userbuflen];
     if (_nss_cache_oslogin_getpwnam_r(name, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
         result->gr_gid = user.pw_gid;
-        // ... (rest of UPG logic from original file)
         char* string = buffer;
         strncpy(string, "x", 2);
         result->gr_passwd = string;

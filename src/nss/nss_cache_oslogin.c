@@ -254,13 +254,19 @@ _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
     char userbuf[userbuflen];
     if (_nss_cache_oslogin_getpwuid_r(gid, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
         result->gr_gid = user.pw_gid;
+
+        // store "x" for password.
         char* string = buffer;
         strncpy(string, "x", 2);
         result->gr_passwd = string;
+
+        // store name.
         string = (char *)((size_t) string + 2);
         size_t name_len = strlen(user.pw_name)+1;
         strncpy(string, user.pw_name, name_len);
         result->gr_name = string;
+
+        // member array starts past strings.
         char **strarray = (char **)((size_t) string + name_len);
         strarray[0] = string;
         strarray[1] = NULL;
@@ -306,13 +312,19 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
     char userbuf[userbuflen];
     if (_nss_cache_oslogin_getpwnam_r(name, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
         result->gr_gid = user.pw_gid;
+
+        // store "x" for password.
         char* string = buffer;
         strncpy(string, "x", 2);
         result->gr_passwd = string;
+
+        // store name.
         string = (char *)((size_t) string + 2);
         size_t name_len = strlen(user.pw_name)+1;
         strncpy(string, user.pw_name, name_len);
         result->gr_name = string;
+
+        // member array starts past strings.
         char **strarray = (char **)((size_t) string + name_len);
         strarray[0] = string;
         strarray[1] = NULL;

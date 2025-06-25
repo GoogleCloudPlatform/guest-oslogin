@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,10 +13,15 @@
 // limitations under the License.
 
 // An NSS module which adds supports for file /etc/oslogin_passwd.cache
+//
+// This version has been rewritten to be thread-safe and fully reentrant.
+// - Lookup functions (getpwnam, getpwuid, etc.) are stateless. They open,
+//   read, and close the cache file on every call.
+// - Enumeration functions (getpwent, getgrent, etc.) use thread-local
+//   storage for their file handles to prevent interference between threads.
 
 #include <errno.h>
 #include <nss.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -25,408 +30,321 @@
 #include "include/nss_cache_oslogin.h"
 #include "include/compat.h"
 
-// Locking implementation: use pthreads.
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-#define NSS_CACHE_OSLOGIN_LOCK() \
-  do {                           \
-    pthread_mutex_lock(&mutex);  \
-  } while (0)
-#define NSS_CACHE_OSLOGIN_UNLOCK() \
-  do {                             \
-    pthread_mutex_unlock(&mutex);  \
-  } while (0)
+// Use thread-local storage for enumeration state. This ensures that each thread
+// gets its own file pointer, preventing race conditions and interference
+// from concurrent lookups.
+static __thread FILE *p_file_thread = NULL;
+static __thread FILE *g_file_thread = NULL;
 
-static FILE *p_file = NULL;
-static FILE *g_file = NULL;
 #ifdef BSD
 extern int fgetpwent_r(FILE *, struct passwd *, char *, size_t,
                        struct passwd **);
 extern int fgetgrent_r(FILE *, struct group *, char *, size_t, struct group **);
-#endif  // ifdef BSD
+#endif // ifdef BSD
 
-/* Common return code routine for all *ent_r_locked functions.
- * We need to return TRYAGAIN if the underlying files guy raises ERANGE,
- * so that our caller knows to try again with a bigger buffer.
+/* Common return code routine.
+ * Returns TRYAGAIN if errnoval is ERANGE, so the caller can retry with a
+ * larger buffer. Otherwise, returns NOTFOUND.
  */
-
 static inline enum nss_status
 _nss_cache_oslogin_ent_bad_return_code(int errnoval) {
-  enum nss_status ret;
-
-  switch (errnoval) {
-    case ERANGE:
-      DEBUG("ERANGE: Try again with a bigger buffer\n");
-      ret = NSS_STATUS_TRYAGAIN;
-      break;
-    case ENOENT:
-    default:
-      DEBUG("ENOENT or default case: Not found\n");
-      ret = NSS_STATUS_NOTFOUND;
-  };
-  return ret;
+    if (errnoval == ERANGE) {
+        DEBUG("ERANGE: Try again with a bigger buffer\n");
+        return NSS_STATUS_TRYAGAIN;
+    }
+    DEBUG("ENOENT or default case: Not found\n");
+    return NSS_STATUS_NOTFOUND;
 }
 
 //
-// Routines for passwd map defined below here
+// Routines for passwd map
 //
-
-// _nss_cache_oslogin_setpwent_locked()
-// Internal setup routine
-
-static enum nss_status
-_nss_cache_oslogin_setpwent_locked(void) {
-  DEBUG("%s %s\n", "Opening", OSLOGIN_PASSWD_CACHE_PATH);
-  if (p_file) {
-    fclose(p_file);
-  }
-
-  p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
-
-  if (p_file) {
-    return NSS_STATUS_SUCCESS;
-  } else {
-    return NSS_STATUS_UNAVAIL;
-  }
-}
 
 // _nss_cache_oslogin_setpwent()
-// Called by NSS to open the passwd file
-// 'stayopen' parameter is ignored.
-
+// Called by NSS to open the passwd file for enumeration. Uses a thread-local
+// file pointer.
 enum nss_status
 _nss_cache_oslogin_setpwent(int stayopen) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setpwent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
-}
-
-// _nss_cache_oslogin_endpwent_locked()
-// Internal close routine
-
-static enum nss_status
-_nss_cache_oslogin_endpwent_locked(void) {
-  DEBUG("Closing %s\n", OSLOGIN_PASSWD_CACHE_PATH);
-  if (p_file) {
-    fclose(p_file);
-    p_file = NULL;
-  }
-  return NSS_STATUS_SUCCESS;
+    DEBUG("Opening %s for enumeration\n", OSLOGIN_PASSWD_CACHE_PATH);
+    if (p_file_thread) {
+        fclose(p_file_thread);
+    }
+    p_file_thread = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
+    if (p_file_thread) {
+        return NSS_STATUS_SUCCESS;
+    }
+    return NSS_STATUS_UNAVAIL;
 }
 
 // _nss_cache_oslogin_endpwent()
-// Called by NSS to close the passwd file
-
+// Called by NSS to close the passwd enumeration file handle for the current thread.
 enum nss_status
 _nss_cache_oslogin_endpwent(void) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_endpwent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
-}
-
-// _nss_cache_oslogin_getpwent_r_locked()
-// Called internally to return the next entry from the passwd file
-
-static enum nss_status
-_nss_cache_oslogin_getpwent_r_locked(struct passwd *result, char *buffer,
-                                     size_t buflen, int *errnop) {
-  enum nss_status ret = NSS_STATUS_SUCCESS;
-
-  if (p_file == NULL) {
-    DEBUG("p_file == NULL, going to setpwent\n");
-    ret = _nss_cache_oslogin_setpwent_locked();
-  }
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    if (fgetpwent_r(p_file, result, buffer, buflen, &result) == 0) {
-      DEBUG("Returning user %s (%u)\n", result->pw_name, result->pw_uid);
-    } else {
-      if (errno == ENOENT) {
-        errno = 0;
-      }
-      *errnop = errno;
-      ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+    DEBUG("Closing %s for enumeration\n", OSLOGIN_PASSWD_CACHE_PATH);
+    if (p_file_thread) {
+        fclose(p_file_thread);
+        p_file_thread = NULL;
     }
-  }
-
-  return ret;
+    return NSS_STATUS_SUCCESS;
 }
 
 // _nss_cache_oslogin_getpwent_r()
-// Called by NSS to look up next entry in passwd file
-
+// Called by NSS to get the next entry from the passwd file. Uses the
+// thread-local file pointer.
 enum nss_status
-_nss_cache_oslogin_getpwent_r(struct passwd *result,
-                              char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_getpwent_r_locked(result, buffer, buflen, errnop);
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
+_nss_cache_oslogin_getpwent_r(struct passwd *result, char *buffer,
+                               size_t buflen, int *errnop) {
+    if (p_file_thread == NULL) {
+        if (_nss_cache_oslogin_setpwent(0) != NSS_STATUS_SUCCESS) {
+            *errnop = errno;
+            return NSS_STATUS_UNAVAIL;
+        }
+    }
+
+    struct passwd *pwp = NULL;
+    if (fgetpwent_r(p_file_thread, result, buffer, buflen, &pwp) == 0 && pwp != NULL) {
+        DEBUG("Returning user %s (%u)\n", result->pw_name, result->pw_uid);
+        return NSS_STATUS_SUCCESS;
+    }
+
+    *errnop = errno;
+    if (*errnop == ENOENT) {
+        *errnop = 0;
+    }
+    return _nss_cache_oslogin_ent_bad_return_code(*errnop);
 }
 
 // _nss_cache_oslogin_getpwuid_r()
-// Find a user account by uid
-
+// Stateless lookup for a user by UID. Opens and closes the file on each call.
 enum nss_status
 _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
-                              char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret;
-
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setpwent_locked();
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getpwent_r_locked(
-                result, buffer, buflen, errnop)) == NSS_STATUS_SUCCESS) {
-      if (result->pw_uid == uid) break;
+                               char *buffer, size_t buflen, int *errnop) {
+    FILE *file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
+    if (file == NULL) {
+        *errnop = errno;
+        return NSS_STATUS_UNAVAIL;
     }
-  }
 
-  _nss_cache_oslogin_endpwent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
+    enum nss_status ret = NSS_STATUS_NOTFOUND;
+    *errnop = 0;
+    struct passwd *pwp = NULL;
 
-  return ret;
+    while (fgetpwent_r(file, result, buffer, buflen, &pwp) == 0 && pwp != NULL) {
+        if (pwp->pw_uid == uid) {
+            ret = NSS_STATUS_SUCCESS;
+            break;
+        }
+    }
+
+    if (pwp == NULL && errno != 0) {
+        *errnop = errno;
+        ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+    }
+
+    fclose(file);
+    return ret;
 }
 
 // _nss_cache_oslogin_getpwnam_r()
-// Find a user account by name
-
+// Stateless lookup for a user by name. Opens and closes the file on each call.
 enum nss_status
 _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
-                              char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret;
-
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setpwent_locked();
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getpwent_r_locked(
-                result, buffer, buflen, errnop)) == NSS_STATUS_SUCCESS) {
-      if (!strcmp(result->pw_name, name)) break;
+                               char *buffer, size_t buflen, int *errnop) {
+    FILE *file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
+    if (file == NULL) {
+        *errnop = errno;
+        return NSS_STATUS_UNAVAIL;
     }
-  }
 
-  _nss_cache_oslogin_endpwent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
+    enum nss_status ret = NSS_STATUS_NOTFOUND;
+    *errnop = 0;
+    struct passwd *pwp = NULL;
 
-  return ret;
+    while (fgetpwent_r(file, result, buffer, buflen, &pwp) == 0 && pwp != NULL) {
+        if (strcmp(pwp->pw_name, name) == 0) {
+            ret = NSS_STATUS_SUCCESS;
+            break;
+        }
+    }
+
+    if (pwp == NULL && errno != 0) {
+        *errnop = errno;
+        ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+    }
+
+    fclose(file);
+    return ret;
 }
 
-// _nss_cache_oslogin_setgrent_locked()
-// Internal setup routine
-
-static enum nss_status
-_nss_cache_oslogin_setgrent_locked(void) {
-  if (g_file) {
-    fclose(g_file);
-  }
-
-  g_file = fopen(OSLOGIN_GROUP_CACHE_PATH, "re");
-
-  if (g_file) {
-    return NSS_STATUS_SUCCESS;
-  } else {
-    return NSS_STATUS_UNAVAIL;
-  }
-}
+//
+// Routines for group map
+//
 
 // _nss_cache_oslogin_setgrent()
-// Called by NSS to open the group file
-// 'stayopen' parameter is ignored.
-
+// Called by NSS to open the group file for enumeration. Uses a thread-local
+// file pointer.
 enum nss_status
 _nss_cache_oslogin_setgrent(int stayopen) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
-}
-
-// _nss_cache_oslogin_endgrent_locked()
-// Internal close routine
-
-static enum nss_status
-_nss_cache_oslogin_endgrent_locked(void) {
-  DEBUG("%s %s\n", "Closing", OSLOGIN_GROUP_CACHE_PATH);
-  if (g_file) {
-    fclose(g_file);
-    g_file = NULL;
-  }
-  return NSS_STATUS_SUCCESS;
+    DEBUG("Opening %s for enumeration\n", OSLOGIN_GROUP_CACHE_PATH);
+    if (g_file_thread) {
+        fclose(g_file_thread);
+    }
+    g_file_thread = fopen(OSLOGIN_GROUP_CACHE_PATH, "re");
+    if (g_file_thread) {
+        return NSS_STATUS_SUCCESS;
+    }
+    return NSS_STATUS_UNAVAIL;
 }
 
 // _nss_cache_oslogin_endgrent()
-// Called by NSS to close the group file
-
+// Called by NSS to close the group enumeration file handle for the current thread.
 enum nss_status
 _nss_cache_oslogin_endgrent(void) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_endgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
-}
-
-// _nss_cache_oslogin_getgrent_r_locked()
-// Called internally to return the next entry from the group file
-
-static enum nss_status
-_nss_cache_oslogin_getgrent_r_locked(struct group *result,
-                                     char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret = NSS_STATUS_SUCCESS;
-
-  if (g_file == NULL) {
-    DEBUG("g_file == NULL, going to setgrent\n");
-    ret = _nss_cache_oslogin_setgrent_locked();
-  }
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    fpos_t position;
-
-    fgetpos(g_file, &position);
-    if (fgetgrent_r(g_file, result, buffer, buflen, &result) == 0) {
-      DEBUG("Returning group %s (%u)\n", result->gr_name, result->gr_gid);
-    } else {
-      /* Rewind back to where we were just before, otherwise the data read
-       * into the buffer is probably going to be lost because there's no
-       * guarantee that the caller is going to have preserved the line we
-       * just read.  Note that glibc's nss/nss_files/files-XXX.c does
-       * something similar in CONCAT(_nss_files_get,ENTNAME_r) (around
-       * line 242 in glibc 2.4 sources).
-       */
-      if (errno == ENOENT) {
-        errno = 0;
-      } else {
-        fsetpos(g_file, &position);
-      }
-      *errnop = errno;
-      ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+    DEBUG("Closing %s for enumeration\n", OSLOGIN_GROUP_CACHE_PATH);
+    if (g_file_thread) {
+        fclose(g_file_thread);
+        g_file_thread = NULL;
     }
-  }
-
-  return ret;
+    return NSS_STATUS_SUCCESS;
 }
 
 // _nss_cache_oslogin_getgrent_r()
-// Called by NSS to look up next entry in group file
-
+// Called by NSS to get the next entry from the group file. Uses the
+// thread-local file pointer.
 enum nss_status
 _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
-                              size_t buflen, int *errnop) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen, errnop);
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
+                               size_t buflen, int *errnop) {
+    if (g_file_thread == NULL) {
+        if (_nss_cache_oslogin_setgrent(0) != NSS_STATUS_SUCCESS) {
+            *errnop = errno;
+            return NSS_STATUS_UNAVAIL;
+        }
+    }
+
+    struct group *grp = NULL;
+    if (fgetgrent_r(g_file_thread, result, buffer, buflen, &grp) == 0 && grp != NULL) {
+        DEBUG("Returning group %s (%u)\n", result->gr_name, result->gr_gid);
+        return NSS_STATUS_SUCCESS;
+    }
+
+    *errnop = errno;
+    if (*errnop == ENOENT) {
+        *errnop = 0;
+    }
+    return _nss_cache_oslogin_ent_bad_return_code(*errnop);
 }
 
 // _nss_cache_oslogin_getgrgid_r()
-// Find a group by gid
-
+// Stateless lookup for a group by GID.
 enum nss_status
 _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
-                              char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret;
-
-  // First check for user whose UID matches requested GID, for self-groups.
-  struct passwd user;
-  size_t userbuflen = 1024;
-  char userbuf[userbuflen];
-  ret = _nss_cache_oslogin_getpwuid_r(gid, &user, userbuf, userbuflen, errnop);
-  if (ret == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
-    result->gr_gid = user.pw_gid;
-
-    // store "x" for password.
-    char* string = buffer;
-    strncpy(string, "x", 2);
-    result->gr_passwd = string;
-
-    // store name.
-    string = (char *)((size_t) string + 2);
-    size_t name_len = strlen(user.pw_name)+1;
-    strncpy(string, user.pw_name, name_len);
-    result->gr_name = string;
-
-    // member array starts past strings.
-    char **strarray = (char **)((size_t) string + name_len);
-    strarray[0] = string;
-    strarray[1] = NULL;
-    result->gr_mem = strarray;
-
-    return NSS_STATUS_SUCCESS;
-  }
-
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setgrent_locked();
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen,
-                                               errnop)) == NSS_STATUS_SUCCESS) {
-      if (result->gr_gid == gid) break;
+                               char *buffer, size_t buflen, int *errnop) {
+    // First, check for user-private-group (UPG) where gid == uid.
+    // This calls the stateless getpwuid_r, so it won't interfere with anything.
+    struct passwd user;
+    size_t userbuflen = 1024;
+    char userbuf[userbuflen];
+    if (_nss_cache_oslogin_getpwuid_r(gid, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
+        result->gr_gid = user.pw_gid;
+        // ... (rest of UPG logic from original file)
+        char* string = buffer;
+        strncpy(string, "x", 2);
+        result->gr_passwd = string;
+        string = (char *)((size_t) string + 2);
+        size_t name_len = strlen(user.pw_name)+1;
+        strncpy(string, user.pw_name, name_len);
+        result->gr_name = string;
+        char **strarray = (char **)((size_t) string + name_len);
+        strarray[0] = string;
+        strarray[1] = NULL;
+        result->gr_mem = strarray;
+        return NSS_STATUS_SUCCESS;
     }
-  }
 
-  _nss_cache_oslogin_endgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
+    // If not a UPG, perform a stateless lookup in the group cache file.
+    FILE *file = fopen(OSLOGIN_GROUP_CACHE_PATH, "re");
+    if (file == NULL) {
+        *errnop = errno;
+        return NSS_STATUS_UNAVAIL;
+    }
 
-  return ret;
+    enum nss_status ret = NSS_STATUS_NOTFOUND;
+    *errnop = 0;
+    struct group *grp = NULL;
+
+    while (fgetgrent_r(file, result, buffer, buflen, &grp) == 0 && grp != NULL) {
+        if (grp->gr_gid == gid) {
+            ret = NSS_STATUS_SUCCESS;
+            break;
+        }
+    }
+
+    if (grp == NULL && errno != 0) {
+        *errnop = errno;
+        ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+    }
+
+    fclose(file);
+    return ret;
 }
 
 // _nss_cache_oslogin_getgrnam_r()
-// Find a group by name
-
+// Stateless lookup for a group by name.
 enum nss_status
 _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
-                              char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret;
-
-  // First check for user whose name matches request, for self-groups.
-  struct passwd user;
-  size_t userbuflen = 1024;
-  char userbuf[userbuflen];
-  ret = _nss_cache_oslogin_getpwnam_r(name, &user, userbuf, userbuflen, errnop);
-  if (ret == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
-    result->gr_gid = user.pw_gid;
-
-    // store "x" for password.
-    char* string = buffer;
-    strncpy(string, "x", 2);
-    result->gr_passwd = string;
-
-    // store name.
-    string = (char *)((size_t) string + 2);
-    size_t name_len = strlen(user.pw_name)+1;
-    strncpy(string, user.pw_name, name_len);
-    result->gr_name = string;
-
-    // member array starts past strings.
-    char **strarray = (char **)((size_t) string + name_len);
-    strarray[0] = string;
-    strarray[1] = NULL;
-    result->gr_mem = strarray;
-
-    return NSS_STATUS_SUCCESS;
-  }
-
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setgrent_locked();
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen,
-                                               errnop)) == NSS_STATUS_SUCCESS) {
-      if (!strcmp(result->gr_name, name)) break;
+                               char *buffer, size_t buflen, int *errnop) {
+    // First, check for user-private-group (UPG).
+    struct passwd user;
+    size_t userbuflen = 1024;
+    char userbuf[userbuflen];
+    if (_nss_cache_oslogin_getpwnam_r(name, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
+        result->gr_gid = user.pw_gid;
+        // ... (rest of UPG logic from original file)
+        char* string = buffer;
+        strncpy(string, "x", 2);
+        result->gr_passwd = string;
+        string = (char *)((size_t) string + 2);
+        size_t name_len = strlen(user.pw_name)+1;
+        strncpy(string, user.pw_name, name_len);
+        result->gr_name = string;
+        char **strarray = (char **)((size_t) string + name_len);
+        strarray[0] = string;
+        strarray[1] = NULL;
+        result->gr_mem = strarray;
+        return NSS_STATUS_SUCCESS;
     }
-  }
 
-  _nss_cache_oslogin_endgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
+    // If not a UPG, perform a stateless lookup in the group cache file.
+    FILE *file = fopen(OSLOGIN_GROUP_CACHE_PATH, "re");
+    if (file == NULL) {
+        *errnop = errno;
+        return NSS_STATUS_UNAVAIL;
+    }
 
-  return ret;
+    enum nss_status ret = NSS_STATUS_NOTFOUND;
+    *errnop = 0;
+    struct group *grp = NULL;
+
+    while (fgetgrent_r(file, result, buffer, buflen, &grp) == 0 && grp != NULL) {
+        if (strcmp(grp->gr_name, name) == 0) {
+            ret = NSS_STATUS_SUCCESS;
+            break;
+        }
+    }
+
+    if (grp == NULL && errno != 0) {
+        *errnop = errno;
+        ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+    }
+
+    fclose(file);
+    return ret;
 }
+
+
+//
+// NSS method registration
+//
 
 NSS_METHOD_PROTOTYPE(__nss_compat_getpwnam_r);
 NSS_METHOD_PROTOTYPE(__nss_compat_getpwuid_r);
@@ -441,26 +359,17 @@ NSS_METHOD_PROTOTYPE(__nss_compat_setgrent);
 NSS_METHOD_PROTOTYPE(__nss_compat_endgrent);
 
 DECLARE_NSS_METHOD_TABLE(methods,
-    { NSDB_PASSWD, "getpwnam_r", __nss_compat_getpwnam_r,
-      (void*)_nss_cache_oslogin_getpwnam_r },
-    { NSDB_PASSWD, "getpwuid_r", __nss_compat_getpwuid_r,
-      (void*)_nss_cache_oslogin_getpwuid_r },
-    { NSDB_PASSWD, "getpwent_r", __nss_compat_getpwent_r,
-      (void*)_nss_cache_oslogin_getpwent_r },
-    { NSDB_PASSWD, "endpwent",   __nss_compat_endpwent,
-      (void*)_nss_cache_oslogin_endpwent },
-    { NSDB_PASSWD, "setpwent",   __nss_compat_setpwent,
-      (void*)_nss_cache_oslogin_setpwent },
-    { NSDB_PASSWD, "getgrnam_r", __nss_compat_getgrnam_r,
-      (void*)_nss_cache_oslogin_getgrnam_r },
-    { NSDB_PASSWD, "getgrgid_r", __nss_compat_getgrgid_r,
-      (void*)_nss_cache_oslogin_getgrgid_r },
-    { NSDB_PASSWD, "getgrent_r", __nss_compat_getgrent_r,
-      (void*)_nss_cache_oslogin_getgrent_r },
-    { NSDB_PASSWD, "endgrent",   __nss_compat_endgrent,
-      (void*)_nss_cache_oslogin_endgrent },
-    { NSDB_PASSWD, "setgrent",   __nss_compat_setgrent,
-      (void*)_nss_cache_oslogin_setgrent },
+    { NSDB_PASSWD, "getpwnam_r", __nss_compat_getpwnam_r, (void*)_nss_cache_oslogin_getpwnam_r },
+    { NSDB_PASSWD, "getpwuid_r", __nss_compat_getpwuid_r, (void*)_nss_cache_oslogin_getpwuid_r },
+    { NSDB_PASSWD, "getpwent_r", __nss_compat_getpwent_r, (void*)_nss_cache_oslogin_getpwent_r },
+    { NSDB_PASSWD, "endpwent",   __nss_compat_endpwent,   (void*)_nss_cache_oslogin_endpwent   },
+    { NSDB_PASSWD, "setpwent",   __nss_compat_setpwent,   (void*)_nss_cache_oslogin_setpwent   },
+
+    { NSDB_GROUP,  "getgrnam_r", __nss_compat_getgrnam_r, (void*)_nss_cache_oslogin_getgrnam_r },
+    { NSDB_GROUP,  "getgrgid_r", __nss_compat_getgrgid_r, (void*)_nss_cache_oslogin_getgrgid_r },
+    { NSDB_GROUP,  "getgrent_r", __nss_compat_getgrent_r, (void*)_nss_cache_oslogin_getgrent_r },
+    { NSDB_GROUP,  "endgrent",   __nss_compat_endgrent,   (void*)_nss_cache_oslogin_endgrent   },
+    { NSDB_GROUP,  "setgrent",   __nss_compat_setgrent,   (void*)_nss_cache_oslogin_setgrent   }
 )
 
 NSS_REGISTER_METHODS(methods)

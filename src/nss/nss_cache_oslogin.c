@@ -70,6 +70,7 @@ _nss_cache_oslogin_ent_bad_return_code(int errnoval) {
 // _nss_cache_oslogin_setpwent()
 // Called by NSS to open the passwd file for enumeration. Uses a thread-local
 // file pointer to maintain state for the calling thread.
+// The 'stayopen' parameter is ignored.
 enum nss_status
 _nss_cache_oslogin_setpwent(int stayopen) {
     DEBUG("Opening %s for enumeration\n", OSLOGIN_PASSWD_CACHE_PATH);
@@ -184,13 +185,10 @@ _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
     return ret;
 }
 
-//
-// Routines for group map
-//
-
 // _nss_cache_oslogin_setgrent()
 // Called by NSS to open the group file for enumeration. Uses a thread-local
 // file pointer.
+// The 'stayopen' parameter is ignored.
 enum nss_status
 _nss_cache_oslogin_setgrent(int stayopen) {
     DEBUG("Opening %s for enumeration\n", OSLOGIN_GROUP_CACHE_PATH);
@@ -229,6 +227,10 @@ _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
         }
     }
 
+    // Remember our position in the file before lookup.
+    fpos_t position;
+    fgetpos(g_file_thread, &position);
+
     struct group *grp = NULL;
     if (fgetgrent_r(g_file_thread, result, buffer, buflen, &grp) == 0 && grp != NULL) {
         DEBUG("Returning group %s (%u)\n", result->gr_name, result->gr_gid);
@@ -238,6 +240,20 @@ _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
     *errnop = errno;
     if (*errnop == ENOENT) {
         *errnop = 0;
+    } else if (*errnop == ERANGE) {
+      /*
+       * In this case, NSS_STATUS_TRYAGAIN will be returned, and the caller is
+       * expected to try again with a larger buffer.
+       *
+       * Rewind back to where we were just before, otherwise the data read into
+       * the buffer is going to be lost because the caller is not expected to
+       * have preserved the line we just read.
+       *
+       * Note that glibc's nss/nss_files/files-XXX.c does something similar in
+       * CONCAT(_nss_files_get,ENTNAME_r) (around line 242 in glibc 2.4
+       * sources).
+       */
+      fsetpos(g_file_thread, &position);
     }
     return _nss_cache_oslogin_ent_bad_return_code(*errnop);
 }

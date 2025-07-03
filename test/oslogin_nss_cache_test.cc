@@ -12,7 +12,16 @@ extern "C" {
 
 class NssCacheTest : public ::testing::Test {
 protected:
-    // Create mock passwd and group files for tests
+    /* Create mock passwd and group files for tests.
+     *
+     * Note that using the hardcoded OSLOGIN_*_CACHE_PATH macros may cause file
+     * permission issues, requiring us to run as root. Running these tests will
+     * also wipe the OS Login cache (in case you're testing this on a GCE VM),
+     * which should be largely harmless but is nonetheless a side-effect to be
+     * aware of.
+     *
+     * If this proves to be a problem, then consider adding in a few functions
+     * to nss_cache_oslogin.c to allow the cache paths to be overridden. */
     void SetUp() override {
         FILE* p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "w");
         if (p_file == NULL) {
@@ -21,7 +30,7 @@ protected:
         ASSERT_NE(p_file, nullptr);
         fprintf(p_file, "testuser:x:1001:1001:Test User:/home/testuser:/bin/bash\n");
         fprintf(p_file, "another:x:1002:1003:Another User:/home/another:/bin/sh\n");
-        // User with matching UID/GID for UPG tests
+        // User with matching UID/GID for UPG tests.
         fprintf(p_file, "upguser:x:1004:1004:UPG User:/home/upguser:/bin/bash\n");
         fclose(p_file);
 
@@ -35,13 +44,13 @@ protected:
         fclose(g_file);
     }
 
-    // Clean up the mock files
+    // Clean up the mock files.
     void TearDown() override {
         remove(OSLOGIN_PASSWD_CACHE_PATH);
         remove(OSLOGIN_GROUP_CACHE_PATH);
     }
 
-    // Helper to allocate buffer for NSS functions
+    // Helper to allocate buffer for NSS functions.
     static constexpr size_t BUFLEN = 4096;
     char buffer[BUFLEN];
     int errnop;

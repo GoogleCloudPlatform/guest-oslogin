@@ -41,6 +41,8 @@ protected:
         ASSERT_NE(g_file, nullptr);
         fprintf(g_file, "testgroup:x:2001:testuser\n");
         fprintf(g_file, "anothergroup:x:1003:\n");
+        // Add a group with a GID that has no corresponding user.
+        fprintf(g_file, "nonupggroup:x:3000:\n");
         fclose(g_file);
     }
 
@@ -137,6 +139,25 @@ TEST_F(NssCacheTest, InterleavedLookupDoesNotCorruptEnumerationState) {
 
     // 5. Clean up the enumeration state.
     _nss_cache_oslogin_endpwent();
+}
+
+/**
+ * A regression test for non-UPG lookups.
+ *
+ * This test verifies that a lookup for a standard group (one that is not a
+ * user-private group) succeeds. In the old code, this would have failed
+ * because the getgrgid_r function was incorrectly registered to the passwd
+ * database (NSDB_PASSWD, rather than NSDB_GROUP). The UPG check would fail, and
+ * the subsequent logic to search the group file would never be reached because
+ * glibc would not have called the function for a 'group' database query.
+ */
+TEST_F(NssCacheTest, GetGrGidForNonUPG) {
+    struct group result;
+    enum nss_status status = _nss_cache_oslogin_getgrgid_r(3000, &result, buffer, BUFLEN, &errnop);
+
+    ASSERT_EQ(status, NSS_STATUS_SUCCESS);
+    ASSERT_STREQ(result.gr_name, "nonupggroup");
+    ASSERT_EQ(result.gr_gid, 3000);
 }
 
 int main(int argc, char** argv) {

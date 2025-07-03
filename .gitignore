@@ -3,11 +3,12 @@
 google_authorized_keys
 google_authorized_keys_sk
 google_oslogin_nss_cache
-test/sshca_runner
-test/test_detail.xml
 selinux/oslogin.mod
 selinux/oslogin.pp
 test/new_test_runner
+test/nss_runner
+test/sshca_runner
+test/test_detail.xml
 test/test_runner
 src/google_authorized_principals
 src/oslogin_sshca

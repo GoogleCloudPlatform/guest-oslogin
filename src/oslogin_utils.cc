@@ -1357,7 +1357,7 @@ static bool CreateGoogleSudoersFile(string sudoers_filename, const char *user_na
   return true;
 }
 
-bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response) {
+bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response, bool cloud_run) {
   bool users_file_exists, sudoers_exists;
   string email, users_filename, sudoers_filename;
 
@@ -1383,10 +1383,18 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
   if (!ApplyPolicy(user_name, email, "login", opts)) {
     // Couldn't apply "login" policy for user in question, log it and deny.
     SysLogErr("Could not grant access to organization user: %s.", user_name);
+    if (cloud_run) {
+      return false;
+    }
     if (users_file_exists) {
       remove(users_filename.c_str());
     }
     return false;
+  }
+
+  // skip file creations for cloud run.
+  if (cloud_run) {
+    return true;
   }
 
   if (!users_file_exists && !CreateGoogleUserFile(users_filename)) {

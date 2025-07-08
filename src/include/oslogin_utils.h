@@ -316,7 +316,7 @@ struct AuthOptions {
 
 // Perform user authorization logic & create users files and google sudoers, returns true if successful,
 // and false otherwise.
-bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response);
+bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response, bool cloud_run=false);
 
 // Given a file_path extracts the file name only. file_path must be a null terminated string.
 const char *FileName(const char *file_path);

@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
   struct AuthOptions opts;
   string user_response;
   const char *progname = FileName(argv[0]);
+  bool cloud_run = false;
 
   fp_len = 0;
   opts = {};
@@ -54,8 +55,8 @@ int main(int argc, char* argv[]) {
 
   SetupSysLog(SYSLOG_IDENT, progname);
 
-  if (argc != 3) {
-    SysLogErr("usage: %s [username] [base64-encoded cert]", progname);
+  if (argc != 3 && argc != 4) {
+    SysLogErr("usage: %s [username] [base64-encoded cert] optional[--cloud_run]", progname);
     goto fail;
   }
 
@@ -71,6 +72,15 @@ int main(int argc, char* argv[]) {
   user_name = argv[1];
   cert = argv[2];
 
+  if (argc == 4) {
+    if(strcmp(argv[3], "--cloud_run") == 0) {
+      cloud_run = true;
+    } else {
+      SysLogErr("Invalid input argument %s. Exiting.", argv[3]);
+      goto fail;
+    }
+  }
+
   fp_len = FingerPrintFromBlob(cert, &fingerprint);
   if (fp_len == 0) {
     SysLogErr("Could not extract/parse fingerprint from certificate.");
@@ -80,7 +90,7 @@ int main(int argc, char* argv[]) {
   opts.fingerprint = fingerprint;
   opts.fp_len = fp_len;
 
-  if (AuthorizeUser(user_name, opts, &user_response)) {
+  if (AuthorizeUser(user_name, opts, &user_response, cloud_run)) {
     cout << user_name << endl;
   }
 

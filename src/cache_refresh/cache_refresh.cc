@@ -52,7 +52,7 @@ static const uint64_t kNssPasswdCacheSize = 2048;
 // exceed 32k.
 static const uint64_t kPasswdBufferSize = 32768;
 
-int refreshpasswdcache() {
+int refreshpasswdcache(bool cloud_run) {
   syslog(LOG_INFO, "Refreshing passwd entry cache");
   int error_code = 0;
   // Temporary buffer to hold passwd entries before writing.
@@ -89,6 +89,12 @@ int refreshpasswdcache() {
     }
     if (strlen(pwd.pw_passwd) == 0) {
       pwd.pw_passwd = (char *)"*";
+    }
+    // Cloud Run logs in the user as root.
+    if (cloud_run) {
+      pwd.pw_dir = (char *)"/";
+      pwd.pw_uid = 0;
+      pwd.pw_gid = 0;
     }
     cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
                << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir
@@ -208,10 +214,24 @@ int refreshgroupcache() {
   return 0;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+  bool cloud_run = false;
   openlog("oslogin_cache_refresh", LOG_PID|LOG_PERROR, LOG_USER);
+
+  if (argc == 2) { 
+    if(strcmp(argv[1], "--cloud_run") == 0){
+      cloud_run = true;
+    } else {
+      syslog(LOG_ERR, "Invalid input argument %s, Exiting.", argv[1]);
+      return 1;
+    }
+  }
+
   int u_res, g_res;
-  u_res = refreshpasswdcache();
+  u_res = refreshpasswdcache(cloud_run);
+  if (cloud_run) {
+    return u_res;
+  }
   g_res = refreshgroupcache();
   closelog();
   if (u_res != 0)

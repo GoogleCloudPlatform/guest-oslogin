@@ -1383,10 +1383,7 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
   if (!ApplyPolicy(user_name, email, "login", opts)) {
     // Couldn't apply "login" policy for user in question, log it and deny.
     SysLogErr("Could not grant access to organization user: %s.", user_name);
-    if (cloud_run) {
-      return false;
-    }
-    if (users_file_exists) {
+    if (users_file_exists && !cloud_run) {
       remove(users_filename.c_str());
     }
     return false;

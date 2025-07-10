@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   SetupSysLog(SYSLOG_IDENT, progname);
 
   if (argc != 3 && argc != 4) {
-    SysLogErr("usage: %s [username] [base64-encoded cert] optional[cloud_run]", progname);
+    SysLogErr("usage: %s [username] [base64-encoded cert] optional[--cloud_run]", progname);
     goto fail;
   }
 
@@ -72,8 +72,13 @@ int main(int argc, char* argv[]) {
   user_name = argv[1];
   cert = argv[2];
 
-  if (argc == 4 && strcmp(argv[3], "cloud_run") == 0) {
-    cloud_run = true;
+  if (argc == 4) {
+    if(strcmp(argv[3], "--cloud_run") == 0) {
+      cloud_run = true;
+    } else {
+      SysLogErr("Invalid input argument %s. Exiting.", argv[3]);
+      goto fail;
+    }
   }
 
   fp_len = FingerPrintFromBlob(cert, &fingerprint);

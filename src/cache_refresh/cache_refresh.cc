@@ -90,7 +90,7 @@ int refreshpasswdcache(bool cloud_run) {
     if (strlen(pwd.pw_passwd) == 0) {
       pwd.pw_passwd = (char *)"*";
     }
-    // Cloud Run will login user as root.
+    // Cloud Run logs in the user as root.
     if (cloud_run) {
       pwd.pw_dir = (char *)"/";
       pwd.pw_uid = 0;
@@ -218,8 +218,13 @@ int main(int argc, char* argv[]) {
   bool cloud_run = false;
   openlog("oslogin_cache_refresh", LOG_PID|LOG_PERROR, LOG_USER);
 
-  if (argc == 2 && strcmp(argv[1], "cloud_run") == 0){
-    cloud_run = true;
+  if (argc == 2) { 
+    if(strcmp(argv[1], "--cloud_run") == 0){
+      cloud_run = true;
+    } else {
+      syslog(LOG_ERR, "Invalid input argument %s, Exiting.", argv[1]);
+      return 1;
+    }
   }
 
   int u_res, g_res;

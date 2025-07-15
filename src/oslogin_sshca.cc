@@ -145,10 +145,10 @@ static int SkipECDSAFields(char **buff, size_t *blen) {
   return 0;
 }
 
-static int GetExtension(const char *key, size_t k_len, char **exts) {
+static int GetExtension(const char *key, size_t k_len, char **exts, char **principal) {
   SSHCertType* impl = NULL;
-  size_t n_len, t_len, tmp_exts_len, ret = -1;
-  char *tmp_exts, *tmp_head, *type, *key_b64, *head;
+  size_t n_len, t_len, tmp_exts_len, tmp_prin_len, ret = -1;
+  char *tmp_exts, *tmp_prin, *tmp_head, *type, *key_b64, *head;
 
   head = tmp_head = NULL;
 
@@ -203,9 +203,14 @@ static int GetExtension(const char *key, size_t k_len, char **exts) {
     goto out;
   }
 
-  // Skip valid principals.
-  if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
+  // Extract valid principals.
+  if (GetString(&key_b64, &n_len, &tmp_prin, &tmp_prin_len) < 0) {
     SysLogErr("Failed to skip cert's \"valid principals\" field.");
+    goto out;
+  }
+
+  if (GetString(&tmp_prin, &tmp_prin_len, principal, NULL) < 0) {
+    SysLogErr("Failed to read princiapl.");
     goto out;
   }
 
@@ -261,11 +266,11 @@ static size_t ExtractFingerPrint(const char *extension, char **out) {
   return strlen(*out);
 }
 
-static int GetByoidFingerPrint(const char *blob, char **fingerprint) {
+static int GetByoidFingerPrint(const char *blob, char **fingerprint, char **principal) {
   size_t f_len, exts_len = -1;
   char *exts = NULL;
 
-  exts_len = GetExtension(blob, strlen(blob), &exts);
+  exts_len = GetExtension(blob, strlen(blob), &exts, principal);
   if (exts_len < 0) {
     SysLogErr("Could not parse/extract extension from SSH CA cert.");
     goto out;
@@ -283,7 +288,7 @@ out:
   return f_len;
 }
 
-int FingerPrintFromBlob(const char *blob, char **fingerprint) {
+int FingerPrintFromBlob(const char *blob, char **fingerprint, char ** principal) {
   if (blob == NULL || strlen(blob) == 0) {
     SysLogErr("Could not parse/extract fingerprint from SSH CA cert's extension: \"blob\" is empty.");
     return 0;
@@ -294,7 +299,11 @@ int FingerPrintFromBlob(const char *blob, char **fingerprint) {
     return 0;
   }
 
-  return GetByoidFingerPrint(blob, fingerprint);
+  if (principal == NULL) {
+    SysLogErr("Could not parse/extract pincipal from SSH CA cert: \"principal\" is NULL.");
+  }
+
+  return GetByoidFingerPrint(blob, fingerprint, principal);
 }
 
 }

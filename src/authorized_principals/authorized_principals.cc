@@ -42,7 +42,7 @@ void signal_handler(int signo) {
 
 int main(int argc, char* argv[]) {
   size_t fp_len;
-  char *user_name, *cert, *fingerprint;
+  char *user_name, *cert, *fingerprint, *principal;
   struct sigaction sig;
   struct AuthOptions opts;
   string user_response;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  fp_len = FingerPrintFromBlob(cert, &fingerprint);
+  fp_len = FingerPrintFromBlob(cert, &fingerprint, &principal);
   if (fp_len == 0) {
     SysLogErr("Could not extract/parse fingerprint from certificate.");
     goto fail;
@@ -89,6 +89,10 @@ int main(int argc, char* argv[]) {
 
   opts.fingerprint = fingerprint;
   opts.fp_len = fp_len;
+
+  if (cloud_run) {
+    user_name = principal;
+  }
 
   if (AuthorizeUser(user_name, opts, &user_response, cloud_run)) {
     cout << user_name << endl;

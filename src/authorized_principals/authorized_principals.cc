@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
   cert = argv[2];
 
   if (argc == 4) {
-    if(strcmp(argv[3], "--cloud_run") == 0) {
+    if (strcmp(argv[3], "--cloud_run") == 0) {
       cloud_run = true;
     } else {
       SysLogErr("Invalid input argument %s. Exiting.", argv[3]);
@@ -91,11 +91,17 @@ int main(int argc, char* argv[]) {
   opts.fp_len = fp_len;
 
   if (cloud_run) {
-    user_name = principal;
-  }
-
-  if (AuthorizeUser(user_name, opts, &user_response, cloud_run)) {
-    cout << user_name << endl;
+    if (strcmp(user_name, "root") != 0) {
+      SysLogErr("Cloud Run only accepts the root user, get %s. Exiting", user_name);
+      goto fail;
+    }
+    if (AuthorizeUser(principal, opts, &user_response, cloud_run)) {
+      cout << principal << endl;
+    }
+  } else {
+    if (AuthorizeUser(user_name, opts, &user_response, cloud_run)) {
+      cout << user_name << endl;
+    }
   }
 
   free(fingerprint);

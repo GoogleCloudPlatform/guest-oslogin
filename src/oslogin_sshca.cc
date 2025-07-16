@@ -205,12 +205,13 @@ static int GetExtension(const char *key, size_t k_len, char **exts, char **princ
 
   // Extract valid principals.
   if (GetString(&key_b64, &n_len, &tmp_prin, &tmp_prin_len) < 0) {
-    SysLogErr("Failed to skip cert's \"valid principals\" field.");
+    SysLogErr("Failed to extract cert's \"valid principals\" field.");
     goto out;
   }
 
+  // The field principal is a self described/sized buffer. Ignore the length of principal as it is not needed.
   if (GetString(&tmp_prin, &tmp_prin_len, principal, NULL) < 0) {
-    SysLogErr("Failed to read princiapl.");
+    SysLogErr("Failed to read principal.");
     goto out;
   }
 

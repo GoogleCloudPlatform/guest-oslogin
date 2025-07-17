@@ -15,7 +15,7 @@
 #ifndef _OSLOGIN_SSHCA_H_
 #define _OSLOGIN_SSHCA_H_ 1
 
-#include "include/compat.h"
+#include "compat.h"
 #include <ctype.h>
 #include <security/pam_modules.h>
 #include <stdlib.h>
@@ -44,7 +44,7 @@
 namespace oslogin_sshca {
 // The public interface - given a blob with a list of certificates we parse each of
 // them until we find the first fingerprint.
-int FingerPrintFromBlob(const char *blob, char **fingerprint);
+int FingerPrintFromBlob(const char *blob, char **fingerprint, char **principal);
 }
 
 #endif

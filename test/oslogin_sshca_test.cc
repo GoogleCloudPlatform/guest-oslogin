@@ -346,49 +346,57 @@ using oslogin_sshca::FingerPrintFromBlob;
 TEST(SSHCATests, TestValidSingleExtCert) {
   struct {
     const char *key;
+    const char *principal;
   } *iter, tests[] = {
-    {VALID_RSA_SINGLE_EXT},
-    {VALID_RSA_MULTI_EXT},
-    {VALID_RSA_MULTI_EQUAL_EXT},
-    {VALID_DSA_SINGLE_EXT},
-    {VALID_DSA_MULTI_EXT},
-    {VALID_ECDSA_SINGLE_EXT},
-    {VALID_ECDSA_MULTI_EXT},
-    {VALID_ED25519_SINGLE_EXT},
-    {VALID_ED25519_MULTI_EXT},
-    { NULL },
+    {VALID_RSA_SINGLE_EXT, "fingerprint@google.com"},
+    {VALID_RSA_MULTI_EXT, "fingerprint@google.com"},
+    {VALID_RSA_MULTI_EQUAL_EXT, "fakey"},
+    {VALID_DSA_SINGLE_EXT, "fingerprint@google.com"},
+    {VALID_DSA_MULTI_EXT, "fingerprint@google.com"},
+    {VALID_ECDSA_SINGLE_EXT, "pantheon.sitar.mig"},
+    {VALID_ECDSA_MULTI_EXT, "fingerprint@google.com"},
+    {VALID_ED25519_SINGLE_EXT, "fingerprint@google.com"},
+    {VALID_ED25519_MULTI_EXT, "fingerprint@google.com"},
+    { NULL, NULL,},
   };
 
   for (iter = tests; iter->key != NULL; iter++) {
-    char *fingerprint = NULL;
-    size_t len = FingerPrintFromBlob(iter->key, &fingerprint);
+    char *fingerprint, *principal;
+    fingerprint = principal = NULL;
+    size_t len = FingerPrintFromBlob(iter->key, &fingerprint, &principal);
     ASSERT_GT(len, 0);
     ASSERT_STREQ(fingerprint, "b86db4ca-09fd-429e-b121-a12799614032");
+    ASSERT_STREQ(principal, iter->principal);
     free(fingerprint);
+    free(principal);
   }
 }
 
 TEST(SSHCATests, TestInvalidNoFpCert) {
   struct {
     const char *key;
+    const char *principal;
   } *iter, tests[] = {
-    {INVALID_DSA_NO_FP},
-    {INVALID_DSA_NON_CERT},
-    {INVALID_ED25519_NO_FP},
-    {INVALID_ED25519_NON_CERT},
-    {INVALID_RSA_NO_FP},
-    {INVALID_RSA_NON_CERT},
-    {INVALID_ECDSA_NO_FP},
-    {INVALID_ECDSA_NON_CERT},
-    { NULL },
+    {INVALID_DSA_NO_FP, "fingerprint@google.com"},
+    {INVALID_DSA_NON_CERT, NULL},
+    {INVALID_ED25519_NO_FP, "fingerprint@google.com"},
+    {INVALID_ED25519_NON_CERT, NULL},
+    {INVALID_RSA_NO_FP, "fingerprint@google.com"},
+    {INVALID_RSA_NON_CERT, NULL},
+    {INVALID_ECDSA_NO_FP, "fingerprint@google.com"},
+    {INVALID_ECDSA_NON_CERT, NULL},
+    { NULL, NULL},
   };
 
   for (iter = tests; iter->key != NULL; iter++) {
-    char *fingerprint = NULL;
-    size_t len = FingerPrintFromBlob(iter->key, &fingerprint);
+    char *fingerprint, *principal;
+    fingerprint = principal = NULL;
+    size_t len = FingerPrintFromBlob(iter->key, &fingerprint, &principal);
     ASSERT_EQ(len, 0);
     ASSERT_STREQ(fingerprint, NULL);
+    ASSERT_STREQ(principal, iter->principal);
     free(fingerprint);
+    free(principal);
   }
 }
 

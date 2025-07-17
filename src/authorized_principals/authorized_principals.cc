@@ -42,7 +42,7 @@ void signal_handler(int signo) {
 
 int main(int argc, char* argv[]) {
   size_t fp_len;
-  char *user_name, *cert, *fingerprint;
+  char *user_name, *cert, *fingerprint, *principal;
   struct sigaction sig;
   struct AuthOptions opts;
   string user_response;
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
   cert = argv[2];
 
   if (argc == 4) {
-    if(strcmp(argv[3], "--cloud_run") == 0) {
+    if (strcmp(argv[3], "--cloud_run") == 0) {
       cloud_run = true;
     } else {
       SysLogErr("Invalid input argument %s. Exiting.", argv[3]);
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  fp_len = FingerPrintFromBlob(cert, &fingerprint);
+  fp_len = FingerPrintFromBlob(cert, &fingerprint, &principal);
   if (fp_len == 0) {
     SysLogErr("Could not extract/parse fingerprint from certificate.");
     goto fail;
@@ -90,8 +90,18 @@ int main(int argc, char* argv[]) {
   opts.fingerprint = fingerprint;
   opts.fp_len = fp_len;
 
-  if (AuthorizeUser(user_name, opts, &user_response, cloud_run)) {
-    cout << user_name << endl;
+  if (cloud_run) {
+    if (strcmp(user_name, "root") != 0) {
+      SysLogErr("Cloud Run only accepts the root user, get %s. Exiting", user_name);
+      goto fail;
+    }
+    if (AuthorizeUser(principal, opts, &user_response, cloud_run)) {
+      cout << principal << endl;
+    }
+  } else {
+    if (AuthorizeUser(user_name, opts, &user_response, cloud_run)) {
+      cout << user_name << endl;
+    }
   }
 
   free(fingerprint);

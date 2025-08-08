@@ -1376,6 +1376,15 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
     return false;
   }
 
+  // Only check adminLogin for cloud run. Skip file creations.
+  if (cloud_run) {
+    bool result = ApplyPolicy(user_name, email, "adminLogin", opts);
+    if (!result) {
+      SysLogErr("Could not grant root access to organization user: %s.", user_name);
+    }
+    return result;
+  }
+
   users_filename = kUsersDir;
   users_filename.append(user_name);
   users_file_exists = FileExists(users_filename.c_str());
@@ -1383,15 +1392,10 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
   if (!ApplyPolicy(user_name, email, "login", opts)) {
     // Couldn't apply "login" policy for user in question, log it and deny.
     SysLogErr("Could not grant access to organization user: %s.", user_name);
-    if (users_file_exists && !cloud_run) {
+    if (users_file_exists) {
       remove(users_filename.c_str());
     }
     return false;
-  }
-
-  // skip file creations for cloud run.
-  if (cloud_run) {
-    return true;
   }
 
   if (!users_file_exists && !CreateGoogleUserFile(users_filename)) {

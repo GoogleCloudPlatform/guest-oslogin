@@ -1,5 +1,7 @@
 [Unit]
 Description=NSS cache refresh
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=oneshot

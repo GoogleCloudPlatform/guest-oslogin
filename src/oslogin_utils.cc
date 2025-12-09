@@ -1322,7 +1322,7 @@ static bool FileExists(const char *file_path) {
   return !stat(file_path, &buff);
 }
 
-static bool CreateGoogleUserFile(string users_filename) {
+static bool CreateGoogleUserFile(string users_filedir, user_name) {
   std::ofstream users_file;
 
   users_file.open(users_filename.c_str());
@@ -1386,8 +1386,7 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
     return result;
   }
 
-  users_filename = kUsersDir;
-  users_filename.append(user_name);
+  users_filename = kUsersDir + user_name;
   users_file_exists = FileExists(users_filename.c_str());
 
   if (!ApplyPolicy(user_name, email, "login", opts)) {
@@ -1399,14 +1398,13 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
     return false;
   }
 
-  if (!users_file_exists && !CreateGoogleUserFile(users_filename)) {
+  if (!users_file_exists && !CreateGoogleUserFile(kUsersDir, user_name)) {
     // If we can't create users file we can't grant access, log it and deny.
     SysLogErr("Failed to create user's file.");
     return false;
   }
 
-  sudoers_filename = kSudoersDir;
-  sudoers_filename.append(user_name);
+  sudoers_filename = kSudoersDir +user_name;
   sudoers_exists = FileExists(sudoers_filename.c_str());
 
   if (ApplyPolicy(user_name, email, "adminLogin", opts)) {

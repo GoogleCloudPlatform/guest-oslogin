@@ -1332,6 +1332,10 @@ static bool CreateGoogleUserFile(string users_filedir, user_name) {
     return false;
   }
 
+  // This file gets sourced by sshd_config.
+  users_file.write("Match User " + user_name + "\n");
+  users_file.write("        AuthorizedKeysFile /dev/null\n");
+
   // We are only creating the file so we could just close it here.
   users_file.close();
 

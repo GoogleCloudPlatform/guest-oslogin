@@ -71,7 +71,8 @@ int main(int argc, char* argv[]) {
   opts = {};
   opts.security_key = true;
 
-  if (AuthorizeUser(user_name, opts, &user_response)) {
+  // We hardcode false here since Cloud Run will never call authorized_keys_sk.
+  if (AuthorizeUser(user_name, opts, &user_response, false)) {
     // At this point, we've verified the user can log in. Grab the ssh keys from
     // the user response.
     std::vector<string> ssh_keys;

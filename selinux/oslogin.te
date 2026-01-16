@@ -9,7 +9,7 @@ require {
 	type sshd_t;
 	type sshd_key_t;
 	class tcp_socket name_connect;
-	class file { create getattr setattr write open unlink };
+	class file { create getattr setattr write open read unlink };
 	class dir { search write remove_name add_name };
 	class fifo_file { getattr open read };
 }

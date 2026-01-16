@@ -1325,8 +1325,8 @@ static bool FileExists(const char *file_path) {
 static bool CreateGoogleUserFile(string users_filedir, string user_name) {
   std::ofstream users_file;
 
-  const char* users_filename = (users_filedir + user_name).c_str();
-  users_file.open(users_filename);
+  string users_filename = (users_filedir + user_name);
+  users_file.open(users_filename.c_str());
 
   if (!users_file.is_open()) {
     // If we can't open the file (meaning we can't create it) we should report failure.
@@ -1340,8 +1340,8 @@ static bool CreateGoogleUserFile(string users_filedir, string user_name) {
   // We are only creating the file so we could just close it here.
   users_file.close();
 
-  chown(users_filename, 0, 0);
-  chmod(users_filename, S_IRUSR | S_IWUSR | S_IRGRP);
+  chown(users_filename.c_str(), 0, 0);
+  chmod(users_filename.c_str(), S_IRUSR | S_IWUSR | S_IRGRP);
   return true;
 }
 

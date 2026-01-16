@@ -100,6 +100,9 @@ semodule -i /usr/share/selinux/packages/oslogin.pp
 if [ -e /var/google-sudoers.d ]; then
   restorecon -r /var/google-sudoers.d
 fi
+if [ -e /var/google-users.d ]; then
+  restorecon -r /var/google-users.d
+fi
 
 %preun
 %systemd_preun google-oslogin-cache.timer

@@ -26,6 +26,11 @@ Summary:        OS Login Functionality for Google Compute Engine
 License:        ASL 2.0
 Source0:        %{name}_%{version}.orig.tar.gz
 Requires:       google-guest-agent >= 1:20231003
+%if 0%{?rhel} == 8
+Requires:       openssh-server >= 8.0p1-17
+%else
+Requires:       openssh-server >= 8.2p1
+%endif
 
 BuildRequires:  boost-devel
 BuildRequires:  gcc-c++

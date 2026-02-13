@@ -1,0 +1,5 @@
+# /var/google-users.d contains per-user sshd configuration for OS Login.
+# All files in this directory are included by /etc/ssh/sshd_config, and so
+# must be syntactically valid sshd config files.
+# Editing files in this directory is not recommended.
+

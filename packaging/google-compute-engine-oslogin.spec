@@ -86,6 +86,7 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 /lib/systemd/system/google-oslogin-cache.service
 /lib/systemd/system/google-oslogin-cache.timer
 /lib/systemd/system-preset/90-google-compute-engine-oslogin.preset
+/var/google-users.d/README
 
 %post
 if [ $1 -eq 1 ]; then

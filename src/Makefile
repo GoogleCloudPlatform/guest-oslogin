@@ -20,6 +20,7 @@ MANDIR = /usr/share/man
 CRONDIR = /etc/cron.d
 SYSTEMDDIR = /lib/systemd/system
 PRESETDIR = /lib/systemd/system-preset
+GOOGLEUSERSDIR = /var/google-users.d
 
 DEST_LIBDIR = $(LIBDIR)
 DEST_BINDIR = $(BINDIR)
@@ -29,6 +30,7 @@ DEST_SELINUX = /usr/share/selinux/packages
 DEST_CRONDIR = $(CRONDIR)
 DEST_SYSTEMDDIR = $(SYSTEMDDIR)
 DEST_PRESETDIR = $(PRESETDIR)
+DEST_GOOGLEUSERSDIR = $(GOOGLEUSERSDIR)
 
 ifneq ($(DESTDIR),)
 DEST_LIBDIR = $(DESTDIR)/$(LIBDIR)
@@ -39,6 +41,7 @@ DEST_SELINUX = $(DESTDIR)/usr/share/selinux/packages
 DEST_CRONDIR = $(DESTDIR)/$(CRONDIR)
 DEST_SYSTEMDDIR = $(DESTDIR)/$(SYSTEMDDIR)
 DEST_PRESETDIR = $(DESTDIR)/$(PRESETDIR)
+DEST_GOOGLEUSERSDIR = $(DESTDIR)/$(GOOGLEUSERSDIR)
 endif
 
 NSS_OSLOGIN_SONAME       = libnss_oslogin.so.2
@@ -129,3 +132,7 @@ else
 	install -d $(DEST_PRESETDIR)
 	install -m 0644 -t $(DEST_PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif
+	# README file in google-users.d
+	install -d $(DEST_GOOGLEUSERSDIR)
+	install -m 0644 -T $(TOPDIR)/google-users-d-README $(DEST_GOOGLEUSERSDIR)/README
+

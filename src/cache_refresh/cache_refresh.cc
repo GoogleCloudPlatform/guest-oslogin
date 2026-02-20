@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "include/compat.h"
+#include "include/oslogin_passwd_cache_writer.h"
 #include "include/oslogin_utils.h"
 
 using oslogin_utils::BufferManager;
@@ -60,15 +61,7 @@ int refreshpasswdcache(bool cloud_run) {
   struct passwd pwd;
   NssCache nss_cache(kNssPasswdCacheSize);
 
-
-  std::ofstream cache_file(kDefaultBackupFilePath);
-  if (cache_file.fail()) {
-    syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupFilePath);
-    return -1;
-  }
-  cache_file << std::unitbuf; // enable automatic flushing
-  chown(kDefaultBackupFilePath, 0, 0);
-  chmod(kDefaultBackupFilePath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  OsLoginPasswdCacheWriter passwd_cache_writer;
 
   nss_cache.Reset();
   while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
@@ -88,37 +81,65 @@ int refreshpasswdcache(bool cloud_run) {
       continue;
     }
     if (strlen(pwd.pw_passwd) == 0) {
-      pwd.pw_passwd = (char *)"*";
+      pwd.pw_passwd = (char*)"*";
     }
     // Cloud Run logs in the user as root.
     if (cloud_run) {
-      pwd.pw_dir = (char *)"/";
+      pwd.pw_dir = (char*)"/";
       pwd.pw_uid = 0;
       pwd.pw_gid = 0;
     }
-    cache_file << pwd.pw_name << ":" << pwd.pw_passwd << ":" << pwd.pw_uid
-               << ":" << pwd.pw_gid << ":" << pwd.pw_gecos << ":" << pwd.pw_dir
-               << ":" << pwd.pw_shell << "\n";
+    passwd_cache_writer.AddUser(pwd.pw_name, pwd.pw_passwd, pwd.pw_uid,
+                                pwd.pw_gid, pwd.pw_gecos, pwd.pw_dir,
+                                pwd.pw_shell);
   }
-  cache_file.close();
 
   if (error_code == ENOMSG) {
-    remove(kDefaultBackupFilePath);
     return 0;
   } else if (error_code == ENOENT) {
-    syslog(LOG_ERR, "Failed to get users, not updating passwd cache file, removing %s.", kDefaultBackupFilePath);
+    syslog(LOG_ERR, "Failed to get users, not updating passwd cache file.");
     // If the cache file already exists, we don't want to overwrite it on a
-    // server error. So remove the backup file and return here.
+    // server error.
     struct stat buffer;
     if (stat(kDefaultFilePath, &buffer) == 0) {
-      remove(kDefaultBackupFilePath);
       return 0;
     }
   }
 
-  if (rename(kDefaultBackupFilePath, kDefaultFilePath) != 0) {
-    syslog(LOG_ERR, "Error moving %s to %s.", kDefaultBackupFilePath, kDefaultFilePath);
+  std::ofstream cache_file(kDefaultBackupFilePath, std::ios::binary);
+  if (!passwd_cache_writer.Commit(cache_file)) {
+    syslog(LOG_ERR, "Failed to commit passwd cache file.");
+    cache_file.close();
     remove(kDefaultBackupFilePath);
+    return -1;
+  }
+  try {
+    cache_file.close();
+  } catch (const std::ofstream::failure &e) {
+    syslog(LOG_ERR, "Exception closing file");
+    error_code = ENOENT;
+  }
+  if (error_code == ENOENT) {
+    remove(kDefaultBackupFilePath);
+    return -1;
+  }
+  if (rename(kDefaultBackupFilePath, kDefaultFilePath) != 0) {
+    syslog(LOG_ERR, "Error moving %s to %s: %s", kDefaultBackupFilePath,
+          kDefaultFilePath, strerror(errno));
+    remove(kDefaultBackupFilePath);
+    return -1;
+  }
+  if (chown(kDefaultFilePath, 0, 0) != 0) {
+    syslog(LOG_ERR, "Failed to chown passwd cache file %s: %s",
+          kDefaultFilePath, strerror(errno));
+    remove(kDefaultFilePath);
+    return -1;
+  }
+  if (chmod(kDefaultFilePath, 0644) != 0) {
+    syslog(LOG_ERR, "Failed to chmod passwd cache file %s: %s",
+          kDefaultFilePath, strerror(errno));
+    remove(kDefaultFilePath);
+    return -1;
   }
 
   return 0;
@@ -136,8 +157,9 @@ int refreshgroupcache() {
     syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupGroupPath);
     return -1;
   }
-  cache_file << std::unitbuf; // enable automatic flushing
-  cache_file.exceptions( cache_file.exceptions() | std::ofstream::failbit | std::ofstream::badbit );
+  cache_file << std::unitbuf;  // enable automatic flushing
+  cache_file.exceptions(
+      cache_file.exceptions() | std::ofstream::failbit | std::ofstream::badbit);
   chown(kDefaultBackupGroupPath, 0, 0);
   chmod(kDefaultBackupGroupPath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -169,7 +191,8 @@ int refreshgroupcache() {
       continue;
     }
     try {
-      cache_file << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":";
+      cache_file
+          << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":";
       for (int i = 0; i < (int)users.size(); i++) {
         if (i > 0) {
           cache_file << ",";
@@ -194,21 +217,28 @@ int refreshgroupcache() {
 
   if (error_code == ENOMSG) {
     remove(kDefaultBackupGroupPath);
-    return 0;
-  } else if (error_code == ENOENT) {
-    syslog(LOG_ERR, "Failed to get groups, not updating group cache file, removing %s.", kDefaultBackupGroupPath);
+    return -1;
+  }
+  if (error_code == ENOENT) {
+    syslog(LOG_ERR,
+           "Failed to get groups, not updating group cache file, removing %s.",
+           kDefaultBackupGroupPath);
     // If the cache file already exists, we don't want to overwrite it on a
     // server error. So remove the backup file and return here.
     struct stat buffer;
     if (stat(kDefaultGroupPath, &buffer) == 0) {
       remove(kDefaultBackupGroupPath);
-      return 0;
+      return -1;
     }
   }
 
   if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
-    syslog(LOG_ERR, "Error moving %s to %s.", kDefaultBackupGroupPath, kDefaultGroupPath);
+    syslog(LOG_ERR,
+           "Error moving %s to %s.",
+           kDefaultBackupGroupPath,
+           kDefaultGroupPath);
     remove(kDefaultBackupGroupPath);
+    return -1;
   }
 
   return 0;
@@ -218,8 +248,8 @@ int main(int argc, char* argv[]) {
   bool cloud_run = false;
   openlog("oslogin_cache_refresh", LOG_PID|LOG_PERROR, LOG_USER);
 
-  if (argc == 2) { 
-    if(strcmp(argv[1], "--cloud_run") == 0){
+  if (argc == 2) {
+    if (strcmp(argv[1], "--cloud_run") == 0){
       cloud_run = true;
     } else {
       syslog(LOG_ERR, "Invalid input argument %s, Exiting.", argv[1]);

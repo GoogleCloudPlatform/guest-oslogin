@@ -22,8 +22,9 @@
 #include <sys/mman.h>
 #include <time.h>
 
-#include "include/nss_cache_oslogin.h"
 #include "include/compat.h"
+#include "include/nss_cache_oslogin.h"
+#include "include/oslogin_passwd_cache_reader.h"
 
 // Locking implementation: use pthreads.
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -37,6 +38,8 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
   } while (0)
 
 static FILE *p_file = NULL;
+static PasswdCache *p_cache = NULL;
+static PasswdCacheIter p_iter;
 static FILE *g_file = NULL;
 #ifdef BSD
 extern int fgetpwent_r(FILE *, struct passwd *, char *, size_t,
@@ -76,11 +79,23 @@ _nss_cache_oslogin_ent_bad_return_code(int errnoval) {
 static enum nss_status
 _nss_cache_oslogin_setpwent_locked(void) {
   DEBUG("%s %s\n", "Opening", OSLOGIN_PASSWD_CACHE_PATH);
+  if (p_cache) {
+    close_passwd_cache(p_cache);
+    p_cache = NULL;
+  }
   if (p_file) {
     fclose(p_file);
+    p_file = NULL;
   }
 
-  p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
+  p_cache = open_passwd_cache(OSLOGIN_PASSWD_CACHE_PATH);
+  if (p_cache) {
+    passwd_cache_iter_begin(p_cache, &p_iter);
+    return NSS_STATUS_SUCCESS;
+  }
+
+  // Fallback to legacy file format.
+  p_file = fopen(OSLOGIN_PASSWD_LEGACY_CACHE_PATH, "re");
 
   if (p_file) {
     return NSS_STATUS_SUCCESS;
@@ -107,7 +122,11 @@ _nss_cache_oslogin_setpwent(int stayopen) {
 
 static enum nss_status
 _nss_cache_oslogin_endpwent_locked(void) {
-  DEBUG("Closing %s\n", OSLOGIN_PASSWD_CACHE_PATH);
+  DEBUG("Closing passwd cache files\n");
+  if (p_cache) {
+    close_passwd_cache(p_cache);
+    p_cache = NULL;
+  }
   if (p_file) {
     fclose(p_file);
     p_file = NULL;
@@ -135,9 +154,14 @@ _nss_cache_oslogin_getpwent_r_locked(struct passwd *result, char *buffer,
                                      size_t buflen, int *errnop) {
   enum nss_status ret = NSS_STATUS_SUCCESS;
 
-  if (p_file == NULL) {
-    DEBUG("p_file == NULL, going to setpwent\n");
+  if (p_cache == NULL && p_file == NULL) {
+    DEBUG("p_cache == NULL && p_file == NULL, going to setpwent\n");
     ret = _nss_cache_oslogin_setpwent_locked();
+  }
+
+  if (p_cache) {
+    return passwd_cache_iter_next_r(p_cache, &p_iter, result, buffer, buflen,
+                                    errnop);
   }
 
   if (ret == NSS_STATUS_SUCCESS) {
@@ -174,6 +198,15 @@ _nss_cache_oslogin_getpwent_r(struct passwd *result,
 enum nss_status
 _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
                               char *buffer, size_t buflen, int *errnop) {
+  PasswdCache *cache = open_passwd_cache(OSLOGIN_PASSWD_CACHE_PATH);
+  if (cache) {
+    enum nss_status status =
+        lookup_passwd_by_uid_r(cache, uid, result, buffer, buflen, errnop);
+    close_passwd_cache(cache);
+    return status;
+  }
+
+  // Fallback to legacy file format.
   enum nss_status ret;
 
   NSS_CACHE_OSLOGIN_LOCK();
@@ -198,6 +231,15 @@ _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
 enum nss_status
 _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
                               char *buffer, size_t buflen, int *errnop) {
+  PasswdCache *cache = open_passwd_cache(OSLOGIN_PASSWD_CACHE_PATH);
+  if (cache) {
+    enum nss_status status =
+        lookup_passwd_by_name_r(cache, name, result, buffer, buflen, errnop);
+    close_passwd_cache(cache);
+    return status;
+  }
+
+  // Fallback to legacy file format.
   enum nss_status ret;
 
   NSS_CACHE_OSLOGIN_LOCK();

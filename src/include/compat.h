@@ -38,14 +38,15 @@ nss_module_register (const char *name, unsigned int *size,      \
     return (methods);                                           \
 }
 
-#define OSLOGIN_PASSWD_CACHE_PATH "/usr/local/etc/oslogin_passwd.cache"
-#define OSLOGIN_GROUP_CACHE_PATH "/usr/local/etc/oslogin_group.cache"
 #define PASSWD_PATH "/usr/local/etc/passwd"
 
-#define K_DEFAULT_PFILE_PATH "/usr/local/etc/oslogin_passwd.cache"
+#define K_DEFAULT_PFILE_PATH "/usr/local/etc/oslogin_passwd.cache.bin"
 #define K_DEFAULT_BACKUP_PFILE_PATH "/usr/local/etc/oslogin_passwd.cache.bak"
 #define K_DEFAULT_GFILE_PATH "/usr/local/etc/oslogin_group.cache"
 #define K_DEFAULT_BACKUP_GFILE_PATH "/usr/local/etc/oslogin_group.cache.bak"
+#define OSLOGIN_PASSWD_CACHE_PATH "/usr/local/etc/oslogin_passwd.cache.bin"
+#define OSLOGIN_PASSWD_LEGACY_CACHE_PATH "/usr/local/etc/oslogin_passwd.cache"
+#define OSLOGIN_GROUP_CACHE_PATH "/usr/local/etc/oslogin_group.cache"
 
 #define PAM_SYSLOG(pamh, ...) syslog(__VA_ARGS__)
 #define DEFAULT_SHELL "/bin/sh"
@@ -55,14 +56,15 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #include <security/pam_ext.h>  // IWYU pragma: keep
 
-#define OSLOGIN_PASSWD_CACHE_PATH "/etc/oslogin_passwd.cache"
-#define OSLOGIN_GROUP_CACHE_PATH "/etc/oslogin_group.cache"
 #define PASSWD_PATH "/etc/passwd"
 
-#define K_DEFAULT_PFILE_PATH "/etc/oslogin_passwd.cache"
+#define K_DEFAULT_PFILE_PATH "/etc/oslogin_passwd.cache.bin"
 #define K_DEFAULT_BACKUP_PFILE_PATH "/etc/oslogin_passwd.cache.bak"
 #define K_DEFAULT_GFILE_PATH "/etc/oslogin_group.cache"
 #define K_DEFAULT_BACKUP_GFILE_PATH "/etc/oslogin_group.cache.bak"
+#define OSLOGIN_PASSWD_CACHE_PATH "/etc/oslogin_passwd.cache.bin"
+#define OSLOGIN_PASSWD_LEGACY_CACHE_PATH "/etc/oslogin_passwd.cache"
+#define OSLOGIN_GROUP_CACHE_PATH "/etc/oslogin_group.cache"
 
 #define PAM_SYSLOG pam_syslog
 #define DEFAULT_SHELL "/bin/bash"

@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 TOPDIR = $(realpath ..)
 
-CPPFLAGS += -I. -I/usr/include/json-c
+CPPFLAGS += -I. -Iinclude -I/usr/include/json-c
 FLAGS = -fPIC -Wall -g
 CFLAGS += $(FLAGS) -Wstrict-prototypes
 CXXFLAGS += $(FLAGS)
@@ -71,7 +71,7 @@ $(NSS_OSLOGIN): nss/nss_oslogin.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 $(NSS_CACHE_OSLOGIN): SONAME = $(NSS_CACHE_OSLOGIN_SONAME)
-$(NSS_CACHE_OSLOGIN): nss/nss_cache_oslogin.o nss/compat/getpwent_r.o oslogin_utils.o
+$(NSS_CACHE_OSLOGIN): nss/nss_cache_oslogin.o nss/compat/getpwent_r.o oslogin_utils.o nss/oslogin_passwd_cache_reader.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 # PAM modules
@@ -93,7 +93,7 @@ google_authorized_keys: authorized_keys/authorized_keys.o oslogin_utils.o
 google_authorized_keys_sk: authorized_keys/authorized_keys_sk.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
-google_oslogin_nss_cache: cache_refresh/cache_refresh.o oslogin_utils.o
+google_oslogin_nss_cache: cache_refresh/cache_refresh.o cache_refresh/oslogin_passwd_cache_writer.o oslogin_utils.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 install: all

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+# In version 20170718-0ubuntu1 prerm disabled OS Login but the package did not
+# depend on openssh-server and missing openssh-server made disabling OS Login
+# and as a result prerm fail. Upon upgrading google-compute-engine-oslogin dpkg
+# tried to fall back to running the new version's prerm but it failed since it
+# was missing. (LP: #1733878)
+# This minimal prerm just exits with success making upgrading from
+# 20170718-0ubuntu1 and older releases succeed.
+exit 0

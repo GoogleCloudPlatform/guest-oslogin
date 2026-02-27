@@ -217,7 +217,8 @@ int refreshgroupcache() {
 
   if (error_code == ENOMSG) {
     remove(kDefaultBackupGroupPath);
-    return -1;
+    // Do not return -1 because groups might be disabled.
+    return 0;
   }
   if (error_code == ENOENT) {
     syslog(LOG_ERR,

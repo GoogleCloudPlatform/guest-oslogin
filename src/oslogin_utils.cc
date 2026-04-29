@@ -1100,7 +1100,7 @@ bool GetGroupByName(string name, struct group* result, BufferManager* buf, int* 
   long http_code;
 
   url.str("");
-  url << kMetadataServerUrl << "groups?groupname=" << name;
+  url << kMetadataServerUrl << "groups?groupname=" << UrlEncode(name);
 
   response.clear();
   http_code = 0;
@@ -1166,7 +1166,7 @@ bool GetUsersForGroup(string groupname, std::vector<string>* users, int* errnop)
 
   do {
     url.str("");
-    url << kMetadataServerUrl << "users?groupname=" << groupname;
+    url << kMetadataServerUrl << "users?groupname=" << UrlEncode(groupname);
     if (pageToken != "")
       url << "&pagetoken=" << pageToken;
 
@@ -1272,7 +1272,7 @@ bool ContinueSession(bool alt, const string& email, const string& user_token, co
   data = json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PLAIN);
 
   std::stringstream url;
-  url << kMetadataServerUrl << "authenticate/sessions/" << session_id
+  url << kMetadataServerUrl << "authenticate/sessions/" << UrlEncode(session_id)
       << "/continue";
   long http_code = 0;
   if (!HttpPost(url.str(), data, response, &http_code) || response->empty() ||

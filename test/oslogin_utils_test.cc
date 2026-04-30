@@ -643,4 +643,11 @@ TEST(ParseJsonToGroupsTest, TestGroups) {
   ASSERT_STREQ(groups[1].name.c_str(), "mygroup2");
 }
 
+TEST(UrlEncodeTest, EncodesSpecialCharacters) {
+  EXPECT_EQ(UrlEncode("abc"), "abc");
+  EXPECT_EQ(UrlEncode("a b"), "a%20b");
+  EXPECT_EQ(UrlEncode("a&b"), "a%26b");
+  EXPECT_EQ(UrlEncode("a/b"), "a%2Fb");
+}
+
 }  // namespace oslogin_utils

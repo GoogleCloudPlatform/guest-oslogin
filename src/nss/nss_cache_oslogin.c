@@ -180,20 +180,30 @@ _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
     return status;
   }
 
-  // Fallback to legacy file format.
-  enum nss_status ret;
+  // Stateless Fallback to legacy file format.
+  FILE *file = fopen(OSLOGIN_PASSWD_LEGACY_CACHE_PATH, "re");
+  if (file == NULL) {
+    *errnop = errno;
+    return NSS_STATUS_UNAVAIL;
+  }
 
-  ret = _nss_cache_oslogin_setpwent_locked();
+  enum nss_status ret = NSS_STATUS_NOTFOUND;
+  *errnop = 0;
+  struct passwd *pwp = NULL;
 
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getpwent_r_locked(
-                result, buffer, buflen, errnop)) == NSS_STATUS_SUCCESS) {
-      if (result->pw_uid == uid) break;
+  while (fgetpwent_r(file, result, buffer, buflen, &pwp) == 0 && pwp != NULL) {
+    if (pwp->pw_uid == uid) {
+      ret = NSS_STATUS_SUCCESS;
+      break;
     }
   }
 
-  _nss_cache_oslogin_endpwent_locked();
+  if (pwp == NULL && errno != 0) {
+    *errnop = errno;
+    ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+  }
 
+  fclose(file);
   return ret;
 }
 
@@ -210,19 +220,30 @@ _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
     return status;
   }
 
-  // Fallback to legacy file format.
-  enum nss_status ret;
+  // Stateless Fallback to legacy file format.
+  FILE *file = fopen(OSLOGIN_PASSWD_LEGACY_CACHE_PATH, "re");
+  if (file == NULL) {
+    *errnop = errno;
+    return NSS_STATUS_UNAVAIL;
+  }
 
-  ret = _nss_cache_oslogin_setpwent_locked();
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getpwent_r_locked(
-                result, buffer, buflen, errnop)) == NSS_STATUS_SUCCESS) {
-      if (!strcmp(result->pw_name, name)) break;
+  enum nss_status ret = NSS_STATUS_NOTFOUND;
+  *errnop = 0;
+  struct passwd *pwp = NULL;
+
+  while (fgetpwent_r(file, result, buffer, buflen, &pwp) == 0 && pwp != NULL) {
+    if (strcmp(pwp->pw_name, name) == 0) {
+      ret = NSS_STATUS_SUCCESS;
+      break;
     }
   }
 
-  _nss_cache_oslogin_endpwent_locked();
+  if (pwp == NULL && errno != 0) {
+    *errnop = errno;
+    ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
+  }
 
+  fclose(file);
   return ret;
 }
 

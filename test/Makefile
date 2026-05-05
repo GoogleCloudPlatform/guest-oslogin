@@ -42,15 +42,10 @@ test_runner: oslogin_utils_test.o oslogin_utils.o gtest-all.o gtest_main.o
 sshca_runner: oslogin_sshca_test.o $(TOPDIR)/src/oslogin_utils.o $(TOPDIR)/src/oslogin_sshca.o gtest-all.o gtest_main.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
-# nss_cache_oslogin.o has some different includes than other files,
-# so this extra rule tells Make how to build it properly.
-nss_cache_oslogin.o:
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I$(TOPDIR)/src -c $(TOPDIR)/src/nss/nss_cache_oslogin.c -o $@ $(LDLIBS)
-
 oslogin_nss_cache_test.o: oslogin_nss_cache_test.cc
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I$(TOPDIR)/src -I$(TOPDIR)/src/nss -c $^ -o $@ $(LDLIBS)
 
-nss_runner: oslogin_nss_cache_test.o nss_cache_oslogin.o gtest-all.o
+nss_runner: oslogin_nss_cache_test.o gtest-all.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
 sshca_tests: sshca_runner

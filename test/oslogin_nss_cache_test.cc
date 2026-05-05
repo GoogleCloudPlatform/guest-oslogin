@@ -3,53 +3,60 @@
 #include <pwd.h>
 #include <grp.h>
 #include <thread>
+#include <string>
+#include <vector>
 
-// The C code to be tested needs to be included this way
+// Globals to hold the in-memory mock file contents.
+std::string mock_passwd_data;
+std::string mock_group_data;
+
+// Forward declaration of the interceptor function.
+extern "C" FILE* mock_fopen(const char* path, const char* mode);
+
+// Redefine fopen to call our interceptor. This will affect the included C file.
+#define fopen(path, mode) mock_fopen(path, mode)
+
 extern "C" {
 #include "nss_cache_oslogin.c"
 #include "include/compat.h"
 }
 
+// Undefine fopen so subsequent code in this file uses standard fopen if needed.
+#undef fopen
+
+// Implementation of the interceptor.
+FILE* mock_fopen(const char* path, const char* mode) {
+  // Check for the hardcoded production paths.
+  if (strcmp(path, "/etc/oslogin_passwd.cache") == 0) {
+    return fmemopen((void*)mock_passwd_data.data(), mock_passwd_data.size(), "r");
+  }
+  if (strcmp(path, "/etc/oslogin_group.cache") == 0) {
+    return fmemopen((void*)mock_group_data.data(), mock_group_data.size(), "r");
+  }
+  // Fallback to standard library fopen for any other files.
+  return ::fopen(path, mode);
+}
+
 class NssCacheTest : public ::testing::Test {
 protected:
-    /* Create mock passwd and group files for tests.
-     *
-     * Note that using the hardcoded OSLOGIN_*_CACHE_PATH macros may cause file
-     * permission issues, requiring us to run as root. Running these tests will
-     * also wipe the OS Login cache (in case you're testing this on a GCE VM),
-     * which should be largely harmless but is nonetheless a side-effect to be
-     * aware of.
-     *
-     * If this proves to be a problem, then consider adding in a few functions
-     * to nss_cache_oslogin.c to allow the cache paths to be overridden. */
+    /* Populate the in-memory buffers for the tests.
+     * No actual files are written to disk, avoiding root permission requirements.
+     */
     void SetUp() override {
-        FILE* p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "w");
-        if (p_file == NULL) {
-          perror("Failed to open passwd cache file");
-        }
-        ASSERT_NE(p_file, nullptr);
-        fprintf(p_file, "testuser:x:1001:1001:Test User:/home/testuser:/bin/bash\n");
-        fprintf(p_file, "another:x:1002:1003:Another User:/home/another:/bin/sh\n");
-        // User with matching UID/GID for UPG tests.
-        fprintf(p_file, "upguser:x:1004:1004:UPG User:/home/upguser:/bin/bash\n");
-        fclose(p_file);
+        mock_passwd_data = 
+            "testuser:x:1001:1001:Test User:/home/testuser:/bin/bash\n"
+            "another:x:1002:1003:Another User:/home/another:/bin/sh\n"
+            "upguser:x:1004:1004:UPG User:/home/upguser:/bin/bash\n";
 
-        FILE* g_file = fopen(OSLOGIN_GROUP_CACHE_PATH, "w");
-        if (g_file == NULL) {
-          perror("Failed to open group cache file");
-        }
-        ASSERT_NE(g_file, nullptr);
-        fprintf(g_file, "testgroup:x:2001:testuser\n");
-        fprintf(g_file, "anothergroup:x:1003:\n");
-        // Add a group with a GID that has no corresponding user.
-        fprintf(g_file, "nonupggroup:x:3000:\n");
-        fclose(g_file);
+        mock_group_data = 
+            "testgroup:x:2001:testuser\n"
+            "anothergroup:x:1003:\n"
+            "nonupggroup:x:3000:\n";
     }
 
-    // Clean up the mock files.
     void TearDown() override {
-        remove(OSLOGIN_PASSWD_CACHE_PATH);
-        remove(OSLOGIN_GROUP_CACHE_PATH);
+        mock_passwd_data.clear();
+        mock_group_data.clear();
     }
 
     // Helper to allocate buffer for NSS functions.
@@ -76,7 +83,6 @@ TEST_F(NssCacheTest, GetPwUidNotFound) {
 TEST_F(NssCacheTest, GetGrGidForUPG) {
     struct group result;
     // For a UPG, getgrgid should succeed by finding the user in the passwd cache.
-    //
     enum nss_status status = _nss_cache_oslogin_getgrgid_r(1004, &result, buffer, BUFLEN, &errnop);
     ASSERT_EQ(status, NSS_STATUS_SUCCESS);
     ASSERT_STREQ(result.gr_name, "upguser");
@@ -87,8 +93,14 @@ TEST_F(NssCacheTest, BufferTooSmall) {
     struct passwd result;
     char small_buffer[5];
     enum nss_status status = _nss_cache_oslogin_getpwnam_r("testuser", &result, small_buffer, sizeof(small_buffer), &errnop);
-    // The function should report that the buffer is too small.
-    //
+    ASSERT_EQ(status, NSS_STATUS_TRYAGAIN);
+    ASSERT_EQ(errnop, ERANGE);
+}
+
+TEST_F(NssCacheTest, GroupBufferTooSmall) {
+    struct group result;
+    char small_buffer[5];
+    enum nss_status status = _nss_cache_oslogin_getgrgid_r(1004, &result, small_buffer, sizeof(small_buffer), &errnop);
     ASSERT_EQ(status, NSS_STATUS_TRYAGAIN);
     ASSERT_EQ(errnop, ERANGE);
 }

@@ -310,6 +310,18 @@ _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
     size_t userbuflen = 1024;
     char userbuf[userbuflen];
     if (_nss_cache_oslogin_getpwuid_r(gid, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
+        size_t name_len = strlen(user.pw_name) + 1;
+        size_t bytes_needed = 2 + name_len;
+        size_t alignment = __alignof__(char *);
+        size_t misalign = ((size_t)buffer + bytes_needed) % alignment;
+        size_t padding = misalign ? (alignment - misalign) : 0;
+        bytes_needed += padding + 2 * sizeof(char *);
+
+        if (buflen < bytes_needed) {
+            *errnop = ERANGE;
+            return NSS_STATUS_TRYAGAIN;
+        }
+
         result->gr_gid = user.pw_gid;
 
         // store "x" for password.
@@ -319,12 +331,11 @@ _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
 
         // store name.
         string = (char *)((size_t) string + 2);
-        size_t name_len = strlen(user.pw_name)+1;
         strncpy(string, user.pw_name, name_len);
         result->gr_name = string;
 
         // member array starts past strings.
-        char **strarray = (char **)((size_t) string + name_len);
+        char **strarray = (char **)((size_t) string + name_len + padding);
         strarray[0] = string;
         strarray[1] = NULL;
         result->gr_mem = strarray;
@@ -368,6 +379,18 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
     size_t userbuflen = 1024;
     char userbuf[userbuflen];
     if (_nss_cache_oslogin_getpwnam_r(name, &user, userbuf, userbuflen, errnop) == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
+        size_t name_len = strlen(user.pw_name) + 1;
+        size_t bytes_needed = 2 + name_len;
+        size_t alignment = __alignof__(char *);
+        size_t misalign = ((size_t)buffer + bytes_needed) % alignment;
+        size_t padding = misalign ? (alignment - misalign) : 0;
+        bytes_needed += padding + 2 * sizeof(char *);
+
+        if (buflen < bytes_needed) {
+            *errnop = ERANGE;
+            return NSS_STATUS_TRYAGAIN;
+        }
+
         result->gr_gid = user.pw_gid;
 
         // store "x" for password.
@@ -377,12 +400,11 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
 
         // store name.
         string = (char *)((size_t) string + 2);
-        size_t name_len = strlen(user.pw_name)+1;
         strncpy(string, user.pw_name, name_len);
         result->gr_name = string;
 
         // member array starts past strings.
-        char **strarray = (char **)((size_t) string + name_len);
+        char **strarray = (char **)((size_t) string + name_len + padding);
         strarray[0] = string;
         strarray[1] = NULL;
         result->gr_mem = strarray;

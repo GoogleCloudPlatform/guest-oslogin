@@ -46,6 +46,10 @@ struct PasswdCache {
   struct passwd_cache_header header;
 };
 
+// Size of the fixed header of a name index node in the cache file.
+// 8 bytes (text_offset) + 8 bytes (left_offset) + 8 bytes (right_offset) + 2 bytes (name_len) = 26 bytes.
+#define NAME_NODE_HEADER_SIZE 26
+
 // Because the file is a binary format, we need special functions to read
 // multi-byte values from the file in the correct endianness.
 static uint16_t read_le16(const uint8_t* p) {
@@ -266,7 +270,7 @@ enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
   uint8_t* base = (uint8_t*)cache->map;
 
   while (current_offset != 0 && current_offset < cache->header.text_offset) {
-    if (current_offset + 26 > cache->map_size) {
+    if (current_offset + NAME_NODE_HEADER_SIZE > cache->map_size) {
       *errnop = EINVAL;
       return NSS_STATUS_TRYAGAIN;
     }
@@ -275,11 +279,11 @@ enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
     uint64_t right_offset = read_le64(base + current_offset + 16);
     uint16_t current_name_len = read_le16(base + current_offset + 24);
 
-    if (current_offset + 26 + current_name_len > cache->map_size) {
+    if (current_offset + NAME_NODE_HEADER_SIZE + current_name_len > cache->map_size) {
       *errnop = EINVAL;
       return NSS_STATUS_TRYAGAIN;
     }
-    const char* current_name = (const char*)(base + current_offset + 26);
+    const char* current_name = (const char*)(base + current_offset + NAME_NODE_HEADER_SIZE);
 
     // The comparison logic here implements lexicographical string comparison
     // for BST traversal. We first compare up to the minimum length of the

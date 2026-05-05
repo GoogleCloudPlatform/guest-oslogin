@@ -85,7 +85,7 @@ TEST(OsLoginPasswdCacheReaderTest, MalformedNameIndexOOBRead) {
 
   enum nss_status status = lookup_passwd_by_name_r(cache, "testuser", &pwd, buf, sizeof(buf), &errnop);
 
-  EXPECT_EQ(NSS_STATUS_TRYAGAIN, status);
+  EXPECT_EQ(NSS_STATUS_UNAVAIL, status);
   EXPECT_EQ(EINVAL, errnop);
 
   close_passwd_cache(cache);

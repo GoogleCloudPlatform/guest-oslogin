@@ -232,16 +232,19 @@ enum nss_status lookup_passwd_by_uid_r(PasswdCache* cache, uid_t uid,
       struct line_info info;
       if (get_line_info(cache, offset, &info) != 0) {
         *errnop = EINVAL;
-        return NSS_STATUS_TRYAGAIN;
+        return NSS_STATUS_UNAVAIL;
       }
       int rc = parse_passwd_line_r(
           info.start, info.len, result, buffer, buflen);
       if (rc == 0) {
         *errnop = 0;
         return NSS_STATUS_SUCCESS;
-      } else {
+      } else if (rc == ERANGE) {
         *errnop = rc;
         return NSS_STATUS_TRYAGAIN;
+      } else {
+        *errnop = rc;
+        return NSS_STATUS_UNAVAIL;
       }
     } else if (uid < current_uid) {
       k = 2 * k + 1;
@@ -272,7 +275,7 @@ enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
   while (current_offset != 0 && current_offset < cache->header.text_offset) {
     if (current_offset + NAME_NODE_HEADER_SIZE > cache->map_size) {
       *errnop = EINVAL;
-      return NSS_STATUS_TRYAGAIN;
+      return NSS_STATUS_UNAVAIL;
     }
     uint64_t text_offset = read_le64(base + current_offset);
     uint64_t left_offset = read_le64(base + current_offset + 8);
@@ -281,7 +284,7 @@ enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
 
     if (current_offset + NAME_NODE_HEADER_SIZE + current_name_len > cache->map_size) {
       *errnop = EINVAL;
-      return NSS_STATUS_TRYAGAIN;
+      return NSS_STATUS_UNAVAIL;
     }
     const char* current_name = (const char*)(base + current_offset + NAME_NODE_HEADER_SIZE);
 
@@ -299,16 +302,19 @@ enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
         struct line_info info;
         if (get_line_info(cache, text_offset, &info) != 0) {
           *errnop = EINVAL;
-          return NSS_STATUS_TRYAGAIN;
+          return NSS_STATUS_UNAVAIL;
         }
         int rc =
             parse_passwd_line_r(info.start, info.len, result, buffer, buflen);
         if (rc == 0) {
           *errnop = 0;
           return NSS_STATUS_SUCCESS;
-        } else {
+        } else if (rc == ERANGE) {
           *errnop = rc;
           return NSS_STATUS_TRYAGAIN;
+        } else {
+          *errnop = rc;
+          return NSS_STATUS_UNAVAIL;
         }
       }
       cmp = name_len < current_name_len ? -1 : 1;
@@ -367,7 +373,11 @@ enum nss_status passwd_cache_iter_next_r(PasswdCache* cache,
   int rc = parse_passwd_line_r(line_start, line_len, result, buffer, buflen);
   if (rc != 0) {
     *errnop = rc;
-    return NSS_STATUS_TRYAGAIN;
+    if (rc == ERANGE) {
+      return NSS_STATUS_TRYAGAIN;
+    } else {
+      return NSS_STATUS_UNAVAIL;
+    }
   }
 
   // Advance iterator to start of next line, or -1 if end of text.

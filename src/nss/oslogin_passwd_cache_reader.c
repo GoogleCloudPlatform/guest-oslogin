@@ -266,10 +266,19 @@ enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
   uint8_t* base = (uint8_t*)cache->map;
 
   while (current_offset != 0 && current_offset < cache->header.text_offset) {
+    if (current_offset + 26 > cache->map_size) {
+      *errnop = EINVAL;
+      return NSS_STATUS_TRYAGAIN;
+    }
     uint64_t text_offset = read_le64(base + current_offset);
     uint64_t left_offset = read_le64(base + current_offset + 8);
     uint64_t right_offset = read_le64(base + current_offset + 16);
     uint16_t current_name_len = read_le16(base + current_offset + 24);
+
+    if (current_offset + 26 + current_name_len > cache->map_size) {
+      *errnop = EINVAL;
+      return NSS_STATUS_TRYAGAIN;
+    }
     const char* current_name = (const char*)(base + current_offset + 26);
 
     // The comparison logic here implements lexicographical string comparison

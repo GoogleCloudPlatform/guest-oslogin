@@ -1,27 +1,49 @@
-
 module oslogin 1.0;
 
-
 require {
-	attribute file_type;
-	attribute non_security_file_type;
-	type http_port_t;
-	type sshd_t;
-	type sshd_key_t;
-	class tcp_socket name_connect;
-	class file { create getattr setattr write open read unlink };
-	class dir { search write read remove_name add_name };
-	class fifo_file { getattr open read };
+ attribute file_type;
+ attribute non_security_file_type;
+ type http_port_t;
+ type sshd_t;
+ type sshd_key_t;
+ class tcp_socket name_connect;
+ class file { create getattr setattr write open read unlink };
+ class dir { search write read remove_name add_name };
+ class fifo_file { getattr open read };
 }
 
 #============= types ==============
 
-type google_t;  # defined in oslogin.fc
+type google_t; # defined in oslogin.fc
 typeattribute google_t file_type, non_security_file_type;
 
-#============= sshd_t ==============
+#============= sshd_t (RHEL 7/8/9/10 legacy support) ==============
 
 allow sshd_t google_t:file { create getattr setattr write open read unlink };
 allow sshd_t google_t:dir { search write read remove_name add_name };
 allow sshd_t http_port_t:tcp_socket name_connect;
 allow sshd_t sshd_key_t:fifo_file { getattr open read };
+
+#============= sshd_session_t (RHEL 9/10 support) ==============
+# Required for the modern split-process OpenSSH architecture where
+# authorized keys command execution and user profile lookup happen
+# in the session domain.
+
+optional {
+    require {
+        type sshd_session_t;
+    }
+    allow sshd_session_t google_t:file { create getattr setattr write open read unlink };
+    allow sshd_session_t google_t:dir { search write read remove_name add_name };
+    allow sshd_session_t http_port_t:tcp_socket name_connect;
+}
+
+#============= systemd_userdbd_t (RHEL 8/9/10 support) ==============
+# Required for NSS lookups proxied through the systemd-userdbd daemon.
+
+optional {
+    require {
+        type systemd_userdbd_t;
+    }
+    allow systemd_userdbd_t http_port_t:tcp_socket name_connect;
+}

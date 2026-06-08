@@ -16,6 +16,10 @@
 
 #include <cerrno>
 #include <string>
+#include <fstream>
+#include <ios>
+#include <cstdio>
+#include <endian.h>
 
 #include <gtest/gtest.h>
 #include <nss.h>
@@ -43,6 +47,49 @@ TEST(OsLoginPasswdCacheReaderTest, MissingFile) {
             lookup_passwd_by_name_r(nullptr, "user1000", &pwd, buf, sizeof(buf),
                                     &errnop));
   EXPECT_EQ(ENOENT, errnop);
+}
+
+TEST(OsLoginPasswdCacheReaderTest, MalformedNameIndexOOBRead) {
+  std::string temp_dir = ::testing::TempDir();
+  std::string filename = temp_dir + "/malformed.cache";
+
+  std::ofstream out(filename, std::ios::binary);
+  ASSERT_TRUE(out.is_open());
+  uint64_t val64;
+  uint16_t val16;
+
+  // Header
+  val64 = htole64(48); out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(0);  out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(48); out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(1);  out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(80); out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(0);  out.write(reinterpret_cast<char*>(&val64), 8);
+
+  // Node at 48
+  val64 = htole64(80); out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(0);  out.write(reinterpret_cast<char*>(&val64), 8);
+  val64 = htole64(0);  out.write(reinterpret_cast<char*>(&val64), 8);
+  val16 = htole16(1000); out.write(reinterpret_cast<char*>(&val16), 2);
+
+  char pad[6] = {0};
+  out.write(pad, 6);
+  out.close();
+
+  PasswdCache* cache = open_passwd_cache(filename.c_str());
+  ASSERT_NE(cache, nullptr);
+
+  struct passwd pwd;
+  char buf[1024];
+  int errnop = 0;
+
+  enum nss_status status = lookup_passwd_by_name_r(cache, "testuser", &pwd, buf, sizeof(buf), &errnop);
+
+  EXPECT_EQ(NSS_STATUS_UNAVAIL, status);
+  EXPECT_EQ(EINVAL, errnop);
+
+  close_passwd_cache(cache);
+  std::remove(filename.c_str());
 }
 
 }  // namespace

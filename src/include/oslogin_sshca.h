@@ -23,18 +23,6 @@
 #include <sys/syslog.h>
 #include <sys/types.h>
 
-#define SKIP_BYTES(b, l, s)                     \
-  {                                             \
-    b = b + s;                                  \
-    l = l - s;                                  \
-  }                                             \
-
-#define SKIP_UINT64(b, l)                       \
-  SKIP_BYTES(b, l, 8)                           \
-
-#define SKIP_UINT32(b, l)                       \
-  SKIP_BYTES(b, l, 4)                           \
-
 #define PEEK_U32(p)                                     \
   (((u_int32_t)(((const u_char *)(p))[0]) << 24) |      \
    ((u_int32_t)(((const u_char *)(p))[1]) << 16) |      \
@@ -45,6 +33,19 @@ namespace oslogin_sshca {
 // The public interface - given a blob with a list of certificates we parse each of
 // them until we find the first fingerprint.
 int FingerPrintFromBlob(const char *blob, char **fingerprint, char **principal);
+
+inline int SkipBytes(char** b, size_t* l, size_t s) {
+  if (*l < s) {
+    return -1;
+  }
+  *b += s;
+  *l -= s;
+  return 0;
+}
+
+inline int SkipUint64(char** b, size_t* l) { return SkipBytes(b, l, 8); }
+
+inline int SkipUint32(char** b, size_t* l) { return SkipBytes(b, l, 4); }
 }
 
 #endif

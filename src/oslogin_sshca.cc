@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 
@@ -65,13 +66,20 @@ static int GetString(char **buff, size_t *blen, char **ptr, size_t *len_ptr) {
   *blen = *blen - 4;
 
   if (ptr != NULL) {
-    *ptr = (char *)malloc(len + 1);
+    if (len == (u_int32_t)-1) {
+      return -1;
+    }
+    *ptr = (char*)malloc((size_t)len + 1);
+    if (*ptr == NULL) {
+      return -1;
+    }
     memcpy(*ptr, *buff, len);
     ((char *)*ptr)[len] = '\0';
   }
 
   // Always move the buffer forward.
   *buff = *buff + len;
+  *blen = *blen - len;
 
   return 0;
 }
@@ -147,10 +155,10 @@ static int SkipECDSAFields(char **buff, size_t *blen) {
 
 static int GetExtension(const char *key, size_t k_len, char **exts, char **principal) {
   SSHCertType* impl = NULL;
-  size_t n_len, t_len, tmp_exts_len, tmp_prin_len, ret = -1;
-  char *tmp_exts, *tmp_prin, *tmp_head, *type, *key_b64, *head;
-
-  head = tmp_head = NULL;
+  size_t n_len = 0, t_len = 0, tmp_exts_len = 0, tmp_prin_len = 0, ret = -1;
+  char *tmp_exts = NULL, *tmp_prin = NULL, *tmp_head = NULL, *type = NULL,
+       *key_b64 = NULL, *head = NULL;
+  int decoded_len;
 
   head = key_b64 = (char *)calloc(k_len, sizeof(char));
   if (key_b64 == NULL) {
@@ -158,10 +166,30 @@ static int GetExtension(const char *key, size_t k_len, char **exts, char **princ
     goto out;
   }
 
-  if ((n_len = b64_pton(key, (u_char *)key_b64, k_len)) < 0) {
+  {
+    size_t b64_len = 0;
+    while (b64_len < k_len && key[b64_len] != '\0' &&
+           !isspace((unsigned char)key[b64_len])) {
+      b64_len++;
+    }
+
+    char* b64_key = (char*)malloc(b64_len + 1);
+    if (b64_key == NULL) {
+      SysLogErr("Could not allocate b64 key buffer.");
+      goto out;
+    }
+    memcpy(b64_key, key, b64_len);
+    b64_key[b64_len] = '\0';
+
+    decoded_len = b64_pton(b64_key, (u_char*)key_b64, k_len);
+    free(b64_key);
+  }
+
+  if (decoded_len < 0) {
     SysLogErr("Could encode buffer b64.");
     goto out;
   }
+  n_len = (size_t)decoded_len;
 
   // Invalid key (?)
   if (n_len <= 4) {
@@ -192,10 +220,16 @@ static int GetExtension(const char *key, size_t k_len, char **exts, char **princ
   }
 
   // Skip serial.
-  SKIP_UINT64(key_b64, n_len);
+  if (SkipUint64(&key_b64, &n_len) < 0) {
+    SysLogErr("Failed to skip cert's \"serial\" field.");
+    goto out;
+  }
 
   // Skip type.
-  SKIP_UINT32(key_b64, n_len);
+  if (SkipUint32(&key_b64, &n_len) < 0) {
+    SysLogErr("Failed to skip cert's \"type\" field.");
+    goto out;
+  }
 
   // Skip key id.
   if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
@@ -216,10 +250,16 @@ static int GetExtension(const char *key, size_t k_len, char **exts, char **princ
   }
 
   // Skip valid after.
-  SKIP_UINT64(key_b64, n_len);
+  if (SkipUint64(&key_b64, &n_len) < 0) {
+    SysLogErr("Failed to skip cert's \"valid after\" field.");
+    goto out;
+  }
 
   // Skip valid before.
-  SKIP_UINT64(key_b64, n_len);
+  if (SkipUint64(&key_b64, &n_len) < 0) {
+    SysLogErr("Failed to skip cert's \"valid before\" field.");
+    goto out;
+  }
 
   // Skip critical options.
   if (GetString(&key_b64, &n_len, NULL, NULL) < 0) {
@@ -268,7 +308,8 @@ static size_t ExtractFingerPrint(const char *extension, char **out) {
 }
 
 static int GetByoidFingerPrint(const char *blob, char **fingerprint, char **principal) {
-  size_t f_len, exts_len = -1;
+  size_t f_len = 0;
+  int exts_len = -1;
   char *exts = NULL;
 
   exts_len = GetExtension(blob, strlen(blob), &exts, principal);

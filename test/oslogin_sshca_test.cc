@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <errno.h>
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,8 +19,6 @@
 #include "oslogin_sshca.h"
 #include "oslogin_utils.h"
 
-using std::string;
-using std::vector;
 
 using oslogin_sshca::FingerPrintFromBlob;
 
@@ -330,18 +327,21 @@ using oslogin_sshca::FingerPrintFromBlob;
   "ACnBlcm1pdC1wdHkAAAAAAAAADnBlcm1pdC11c2VyLXJjAAAAAAAAAAAAAAAzAAAAC3Nz" \
   "aC1lZDI1NTE5AAAAIJD/WK1OEhbe0bG/3ibbjawl0FNHf3nho9hF9D5QcXOPAAAAUwAAA" \
   "Atzc2gtZWQyNTUxOQAAAEANxz8Lv5Ojc0U1SIU5eGoGk8N+LAHS5/OfB3AvLT94raJ8qc" \
-  "lB7KvEgKOycsF5xLJOL9+/oe29SeNTq+ubIkIN fingerprint@google.com"         \
+  "lB7KvEgKOycsF5xLJOL9+/oe29SeNTq+ubIkIN fingerprint@google.com"
 
-#define INVALID_ED25519_NO_FP "AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIDDgIXa9QLFY7RpSNnWDm3Saq" \
-  "YZ5HGcpzHq9hdv64nqXAAAAIKfDRdZjpCb2YVsmhs286hQTH7JFctizNC0W7UQKfruSAA" \
-  "AAAAAAAAAAAAABAAAAFmZpbmdlcnByaW50QGdvb2dsZS5jb20AAAAaAAAAFmZpbmdlcnB" \
-  "yaW50QGdvb2dsZS5jb20AAAAAZNFCeAAAAABmsSTsAAAAAAAAAAAAAAAAAAAAMwAAAAtz" \
-  "c2gtZWQyNTUxOQAAACBTEPiuWCgwX9JhFzMNLex4d9uRtdWfUg0OCAdH6nVbsAAAAFMAA" \
-  "AALc3NoLWVkMjU1MTkAAABAt2CPRZos3Lna+44LwI6ON8rRktxAqz1S4nUf+IwrG83Wbv" \
-  "nEvvZ2plHLTAU7GP2ZMedVKoXB9KXB2vNBVjt9Cg== fingerprint@google.com"     \
+#define INVALID_ED25519_NO_FP                                                  \
+  "AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIDDgIXa9QLFY7RpSNnWDm3" \
+  "Saq"                                                                        \
+  "YZ5HGcpzHq9hdv64nqXAAAAIKfDRdZjpCb2YVsmhs286hQTH7JFctizNC0W7UQKfruSAA"      \
+  "AAAAAAAAAAAAABAAAAFmZpbmdlcnByaW50QGdvb2dsZS5jb20AAAAaAAAAFmZpbmdlcnB"      \
+  "yaW50QGdvb2dsZS5jb20AAAAAZNFCeAAAAABmsSTsAAAAAAAAAAAAAAAAAAAAMwAAAAtz"      \
+  "c2gtZWQyNTUxOQAAACBTEPiuWCgwX9JhFzMNLex4d9uRtdWfUg0OCAdH6nVbsAAAAFMAA"      \
+  "AALc3NoLWVkMjU1MTkAAABAt2CPRZos3Lna+44LwI6ON8rRktxAqz1S4nUf+IwrG83Wbv"      \
+  "nEvvZ2plHLTAU7GP2ZMedVKoXB9KXB2vNBVjt9Cg== fingerprint@google.com"
 
-#define INVALID_ED25519_NON_CERT "AAAAC3NzaC1lZDI1NTE5AAAAIH"             \
-  "s6r2AekiTHmmoJMKxAKtKW4qcGq5Ku1+SJ1NLdZh01 fingerprint@google.com"     \
+#define INVALID_ED25519_NON_CERT \
+  "AAAAC3NzaC1lZDI1NTE5AAAAIH"   \
+  "s6r2AekiTHmmoJMKxAKtKW4qcGq5Ku1+SJ1NLdZh01 fingerprint@google.com"
 
 TEST(SSHCATests, TestValidSingleExtCert) {
   struct {
@@ -395,6 +395,25 @@ TEST(SSHCATests, TestInvalidNoFpCert) {
     ASSERT_EQ(len, 0);
     ASSERT_STREQ(fingerprint, NULL);
     ASSERT_STREQ(principal, iter->principal);
+    free(fingerprint);
+    free(principal);
+  }
+}
+
+TEST(SSHCATests, TestTruncatedCertificates) {
+  const char* truncated_keys[] = {
+      "AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20=", "AAAA", "AAAAABBB",
+      "AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgpv8XuCPuX0/"
+      "2hATuCuFa1kVXR",
+      NULL};
+
+  for (int i = 0; truncated_keys[i] != NULL; i++) {
+    char* fingerprint = NULL;
+    char* principal = NULL;
+    int len = FingerPrintFromBlob(truncated_keys[i], &fingerprint, &principal);
+    EXPECT_EQ(len, 0);
+    EXPECT_EQ(fingerprint, (char*)NULL);
+    EXPECT_EQ(principal, (char*)NULL);
     free(fingerprint);
     free(principal);
   }

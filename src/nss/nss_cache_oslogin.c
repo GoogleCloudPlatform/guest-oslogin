@@ -380,6 +380,12 @@ _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
   char userbuf[userbuflen];
   ret = _nss_cache_oslogin_getpwuid_r(gid, &user, userbuf, userbuflen, errnop);
   if (ret == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
+    size_t name_len = strlen(user.pw_name) + 1;
+    if (buflen < 2 + name_len + 2 * sizeof(char*)) {
+      *errnop = ERANGE;
+      return NSS_STATUS_TRYAGAIN;
+    }
+
     result->gr_gid = user.pw_gid;
 
     // store "x" for password.
@@ -432,6 +438,12 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
   char userbuf[userbuflen];
   ret = _nss_cache_oslogin_getpwnam_r(name, &user, userbuf, userbuflen, errnop);
   if (ret == NSS_STATUS_SUCCESS && user.pw_gid == user.pw_uid) {
+    size_t name_len = strlen(user.pw_name) + 1;
+    if (buflen < 2 + name_len + 2 * sizeof(char*)) {
+      *errnop = ERANGE;
+      return NSS_STATUS_TRYAGAIN;
+    }
+
     result->gr_gid = user.pw_gid;
 
     // store "x" for password.

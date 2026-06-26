@@ -41,6 +41,9 @@ test_runner: oslogin_utils_test.o oslogin_utils.o gtest-all.o gtest_main.o
 sshca_runner: oslogin_sshca_test.o $(TOPDIR)/src/oslogin_utils.o $(TOPDIR)/src/oslogin_sshca.o gtest-all.o gtest_main.o
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
 
+nss_test_runner: nss_cache_oslogin_test.o nss_cache_oslogin.o gtest-all.o gtest_main.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
+
 sshca_tests: sshca_runner
 	$(SSHCA_TEST_RUNNER)
 

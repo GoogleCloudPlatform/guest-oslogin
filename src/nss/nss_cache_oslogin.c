@@ -395,7 +395,6 @@ _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
 
     // store name.
     string = (char *)((size_t) string + 2);
-    size_t name_len = strlen(user.pw_name)+1;
     strncpy(string, user.pw_name, name_len);
     result->gr_name = string;
 
@@ -453,7 +452,6 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
 
     // store name.
     string = (char *)((size_t) string + 2);
-    size_t name_len = strlen(user.pw_name)+1;
     strncpy(string, user.pw_name, name_len);
     result->gr_name = string;
 

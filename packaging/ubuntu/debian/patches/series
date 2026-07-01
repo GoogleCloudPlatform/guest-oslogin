@@ -1,0 +1,2 @@
+0001-set-LDFLAGS-to-prevent-undefs.patch
+0002-inherit-cflags.patch

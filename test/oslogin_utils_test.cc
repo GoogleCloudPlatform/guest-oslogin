@@ -257,6 +257,115 @@ TEST(ParseJsonPasswdTest, ParseJsonToPasswdNoLoginProfilesSucceeds) {
   ASSERT_STREQ(result.pw_dir, "/home/foo");
 }
 
+TEST(ParseJsonPasswdTest, ParseJsonToPasswdFailsWithLowGid) {
+  string test_user =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":2001,\"gid\":6,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_FALSE(ParseJsonToPasswd(test_user, &result, &buf, &test_errno));
+  ASSERT_EQ(test_errno, EINVAL);
+}
+
+TEST(ParseJsonPasswdTest, ParseJsonToPasswdFailsWithLowGidString) {
+  string test_user =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":\"2001\",\"gid\":\"6\","
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_FALSE(ParseJsonToPasswd(test_user, &result, &buf, &test_errno));
+  ASSERT_EQ(test_errno, EINVAL);
+}
+
+TEST(ParseJsonPasswdTest, ParseJsonToPasswdFailsWithGid999) {
+  string test_user =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":2001,\"gid\":999,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_FALSE(ParseJsonToPasswd(test_user, &result, &buf, &test_errno));
+  ASSERT_EQ(test_errno, EINVAL);
+}
+
+TEST(ParseJsonPasswdTest, ParseJsonToPasswdSucceedsWithGid1000) {
+  string test_user =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":1000,\"gid\":1000,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_TRUE(ParseJsonToPasswd(test_user, &result, &buf, &test_errno));
+  ASSERT_EQ(result.pw_uid, 1000);
+  ASSERT_EQ(result.pw_gid, 1000);
+  ASSERT_STREQ(result.pw_name, "foo");
+  ASSERT_STREQ(result.pw_shell, "/bin/bash");
+  ASSERT_STREQ(result.pw_dir, "/home/foo");
+}
+
+TEST(ParseJsonPasswdTest, ParseJsonToPasswdSucceedsWithGidZeroDefaultsToUid) {
+  string test_user =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":2001,\"gid\":0,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_TRUE(ParseJsonToPasswd(test_user, &result, &buf, &test_errno));
+  ASSERT_EQ(result.pw_uid, 2001);
+  ASSERT_EQ(result.pw_gid, 2001);
+  ASSERT_STREQ(result.pw_name, "foo");
+  ASSERT_STREQ(result.pw_shell, "/bin/bash");
+  ASSERT_STREQ(result.pw_dir, "/home/foo");
+}
+
+TEST(ParseJsonPasswdTest,
+     ParseJsonToPasswdSucceedsWithOmittedGidDefaultsToUid) {
+  string test_user =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":2001,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_TRUE(ParseJsonToPasswd(test_user, &result, &buf, &test_errno));
+  ASSERT_EQ(result.pw_uid, 2001);
+  ASSERT_EQ(result.pw_gid, 2001);
+  ASSERT_STREQ(result.pw_name, "foo");
+  ASSERT_STREQ(result.pw_shell, "/bin/bash");
+  ASSERT_STREQ(result.pw_dir, "/home/foo");
+}
+
 // Test parsing a JSON response without enough space in the buffer.
 TEST(ParseJsonPasswdTest, ParseJsonToPasswdFailsWithERANGE) {
   string test_user =

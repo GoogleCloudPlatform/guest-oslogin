@@ -507,12 +507,12 @@ bool ValidateUserName(const string& user_name) {
 }
 
 bool ValidatePasswd(struct passwd* result, BufferManager* buf, int* errnop) {
-  // OS Login disallows uids less than 1000.
+  // OS Login disallows uids and gids less than 1000.
   if (result->pw_uid < 1000) {
     *errnop = EINVAL;
     return false;
   }
-  if (result->pw_gid == 0) {
+  if (result->pw_gid < 1000) {
     *errnop = EINVAL;
     return false;
   }
@@ -832,6 +832,7 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
   // Populate with some default values that ValidatePasswd can detect if they
   // are not set.
   result->pw_uid = 0;
+  result->pw_gid = 0;
   result->pw_shell = (char*)"";
   result->pw_name = (char*)"";
   result->pw_dir = (char*)"";
@@ -861,10 +862,6 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
     } else if (string_key == "gid") {
       if (val_type == json_type_int || val_type == json_type_string) {
         result->pw_gid = (uint32_t)json_object_get_int64(val);
-        // Use the uid as the default group when gid is not set or is zero.
-        if (result->pw_gid == 0) {
-          result->pw_gid = result->pw_uid;
-        }
       } else {
         goto cleanup;
       }
@@ -894,6 +891,10 @@ bool ParseJsonToPasswd(const string& json, struct passwd* result, BufferManager*
       }
     }
   }
+  }
+  // Use the uid as the default group when gid is not set or is zero.
+  if (result->pw_gid == 0) {
+    result->pw_gid = result->pw_uid;
   }
   *errnop = 0;
   ret = ValidatePasswd(result, buf, errnop);

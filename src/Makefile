@@ -133,6 +133,6 @@ else
 	install -m 0644 -t $(DEST_PRESETDIR) $(TOPDIR)/90-google-compute-engine-oslogin.preset
 endif
 	# README file in google-users.d
-	install -m 0640 -d $(DEST_GOOGLEUSERSDIR)
+	install -m 0750 -d $(DEST_GOOGLEUSERSDIR)
 	install -m 0644 -T $(TOPDIR)/google-users-d-README $(DEST_GOOGLEUSERSDIR)/README
 

@@ -1,0 +1,5 @@
+# binnmus are not used in Ubuntu
+# gce-compute-image-packages source: not-binnmuable-all-depends-any gce-compute-image-packages -> google-compute-engine-oslogin
+# those symlinks are not shipped nor used in the build
+# gce-compute-image-packages source: source-contains-unsafe-symlink packages/google-compute-engine/src/etc/dhcp/dhclient-exit-hooks
+# gce-compute-image-packages source: source-contains-unsafe-symlink packages/google-compute-engine/src/etc/dhcp/dhclient-exit-hooks.d/google_set_hostname

@@ -1,0 +1,528 @@
+google-compute-engine-oslogin (20240701.00-0ubuntu1) oracular; urgency=medium
+
+  [ Utkarsh Gupta ]
+  * d/links: Update links w/ respective .so shipped
+
+  [ Chloé 'kajiya' Smith ]
+  * New upstream version for upstream tag 20240320.00. (LP: #2073166)
+
+ -- Chloé 'kajiya' Smith <chloe.smith@canonical.com>  Mon, 15 Jul 2024 17:56:01 +0100
+
+google-compute-engine-oslogin (20231004.00-0ubuntu5) oracular; urgency=medium
+
+  * d/p/0002-inherit-cflags.patch: inherit environment's build flags
+    (LP: #2071665).
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Tue, 02 Jul 2024 10:15:17 +1200
+
+google-compute-engine-oslogin (20231004.00-0ubuntu4) noble; urgency=medium
+
+  * No-change rebuild for CVE-2024-3094
+
+ -- William Grant <wgrant@ubuntu.com>  Mon, 01 Apr 2024 16:49:52 +1100
+
+google-compute-engine-oslogin (20231004.00-0ubuntu3) noble; urgency=medium
+
+  * No-change rebuild against libcurl4t64
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Sat, 16 Mar 2024 06:24:53 +0000
+
+google-compute-engine-oslogin (20231004.00-0ubuntu2) noble; urgency=medium
+
+  * d/control: There must be a dependency on `google-guest-agent`
+    to match the (upstream) Google managed d/control file (LP: #2052438)
+
+ -- Chloé 'kajiya' Smith <chloe.smith@canonical.com>  Thu, 01 Feb 2024 00:06:38 +0000
+
+google-compute-engine-oslogin (20231004.00-0ubuntu1) noble; urgency=medium
+
+  * New upstream version 20231004.00. (LP: #2043001)
+  * d/links: Update links w/ respective .so shipped
+
+ -- Utkarsh Gupta <utkarsh@ubuntu.com>  Wed, 08 Nov 2023 10:19:01 +0200
+
+google-compute-engine-oslogin (20220714.00-0ubuntu1) kinetic; urgency=medium
+
+  * New upstream version 20220714.00. (LP: #1995620)
+    - no message if no groups (#78).
+    - remove deprecated binary (#79).
+    - Reauth error (#81).
+    - Fix build for EL9. (#82).
+    - pam login: split conditions for logging (#83).
+    - strip json-c version symbol (#84).
+  * d/links: Update links w/ respective .so shipped.
+  * d/lintian-overrides: google_oslogin_control has been deprecated.
+  * d/lintian-overrides: update warning message, d'oh.
+  * d/copyright: drop superfluous file patterns.
+
+ -- Utkarsh Gupta <utkarsh@ubuntu.com>  Thu, 03 Nov 2022 16:21:52 +0100
+
+google-compute-engine-oslogin (20210907.00-0ubuntu1) impish; urgency=medium
+
+  * New upstream version 20210907.00. (LP: #1944718)
+    - fix packaging for authorized_keys_sk (#68).
+    - fix double free in ParseJsonToKey (#70).
+    - include cstdlib for exit (#75).
+    - use sigaction for signals (#76).
+  * d/p/0002-fix-double-free-in-ParseJsonToKey.patch: drop
+    patch as it is included in this upstream release.
+  * d/links: Update links w/ respective .so shipped
+  * d/lintian-overrides: no manpage for google_authorized_keys_sk.
+
+ -- Utkarsh Gupta <utkarsh.gupta@canonical.com>  Thu, 23 Sep 2021 16:45:25 +0530
+
+google-compute-engine-oslogin (20210728.00-0ubuntu1) impish; urgency=medium
+
+  * New upstream version 20210728.00. (LP: #1938289)
+    - use IP address for calling the metadata server (#63).
+    - throw exceptions in cache_refresh (#64).
+    - JSON object cleanup (#65).
+  * d/p/0002-fix-double-free-in-ParseJSONToKey.patch: Add
+    patch to fix double free in ParseJsonToKey.
+  * d/links: Update links w/ respective .so shipped.
+
+ -- Utkarsh Gupta <utkarsh.gupta@canonical.com>  Thu, 05 Aug 2021 18:16:41 +0530
+
+google-compute-engine-oslogin (20210618.00-0ubuntu1) impish; urgency=medium
+
+  * New upstream version 20210618.00. (LP: #1938289)
+    - flush each group member write (#62).
+  * d/links: Update links w/ respective .so shipped.
+  * d/s/lintian-overrides: Comment out old overrides.
+
+ -- Utkarsh Gupta <utkarsh.gupta@canonical.com>  Wed, 28 Jul 2021 19:05:44 +0530
+
+google-compute-engine-oslogin (20210429.00-0ubuntu1) impish; urgency=medium
+
+  * New upstream version 20210429.00 (LP: #1928856)
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 18 May 2021 20:28:49 +0200
+
+google-compute-engine-oslogin (20210122.00-0ubuntu1) hirsute; urgency=medium
+
+  * debian/gbp.conf: Add basic gbp config
+  * New upstream version 20210122.00 (LP: #1913049)
+    - call correct function in pwenthelper
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Mon, 25 Jan 2021 11:51:32 +0100
+
+google-compute-engine-oslogin (20210108.00-0ubuntu1) hirsute; urgency=medium
+
+  * New upstream version 20210108.00 (LP: #1911633)
+    - Update logic in the cache_refresh binary
+  * Update shipped symlinks
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Thu, 14 Jan 2021 09:34:22 +0100
+
+google-compute-engine-oslogin (20200925.00-0ubuntu3) groovy; urgency=medium
+
+  * New upstream version 20200925.00 (LP: #1899629)
+    - Support security key generated OTP challenges
+  * Update shared library symlinks
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 13 Oct 2020 15:26:47 +0200
+
+google-compute-engine-oslogin (20200507.00-0ubuntu2) groovy; urgency=medium
+
+  * Set debhelper-compat version in Build-Depends and bump it to 12
+  * debian/rules: Don't use --with=systemd, it is default the with
+    compat level 10 and up.
+  * debian/control: Bump Standards-Version, no changes were required
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 04 Aug 2020 08:41:39 +0200
+
+google-compute-engine-oslogin (20200507.00-0ubuntu1) groovy; urgency=medium
+
+  * Switch to new upstream repository of split off oslogin, rename the
+    source package and ship only oslogin (LP: #1885905)
+  * New upstream version 20200507.00
+  * Refresh patches
+  * Update packaging to build and ship only OS Login
+  * debian/changelog: Add missing changelog entries
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Thu, 23 Jul 2020 15:49:57 +0200
+
+gce-compute-image-packages (20190801-0ubuntu5) groovy; urgency=medium
+
+  * Disable automatic adding of groups to all users (LP: #1878654)
+    - d/p/0006-Remove-OS-Login-users-from-admin-groups.-29.patch: remove
+      adm, docker, and lxd groups
+    - d/p/0007-Remove-local-user-groups-for-OS-Login-users.-30.patch:
+      remove dip and plugdev groups
+
+ -- Steve Beattie <sbeattie@ubuntu.com>  Thu, 14 May 2020 15:25:37 -0700
+
+gce-compute-image-packages (20190801-0ubuntu4) focal; urgency=medium
+
+  * No-change rebuild with fixed binutils on arm64.
+
+ -- Matthias Klose <doko@ubuntu.com>  Sat, 08 Feb 2020 11:01:26 +0000
+
+gce-compute-image-packages (20190801-0ubuntu3) focal; urgency=medium
+
+  * Stop build the Python2 packages.
+
+ -- Matthias Klose <doko@ubuntu.com>  Mon, 13 Jan 2020 18:33:02 +0100
+
+gce-compute-image-packages (20190801-0ubuntu2) focal; urgency=medium
+
+  * No-change rebuild to generate dependencies on python2.
+
+ -- Matthias Klose <doko@ubuntu.com>  Tue, 17 Dec 2019 12:33:32 +0000
+
+gce-compute-image-packages (20190801-0ubuntu1) eoan; urgency=medium
+
+  * New upstream version 20190801 (LP: #1840245)
+    - Add manpages for NSS modules
+    - Switch to the v1 Guest Attributes URL
+    - Support Google Private Access over IPv6
+  * Refresh patches
+  * Fix running tests
+  * Keep setting multiarch libdir with the changes upstream Makefiles
+  * Update shared library symlinks
+  * Don't try to set noop scheduler for partitions (LP: #1833660)
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Thu, 15 Aug 2019 19:36:10 +0200
+
+gce-compute-image-packages (20190522-0ubuntu2) eoan; urgency=medium
+
+  * Rebuild against new libjson-c4.
+
+ -- Gianfranco Costamagna <locutusofborg@debian.org>  Sat, 29 Jun 2019 13:58:02 +0200
+
+gce-compute-image-packages (20190522-0ubuntu1) eoan; urgency=medium
+
+  * New upstream version 20190522 (LP: #1831436)
+    - Encode hostkey value to utf-8 (needed for Python 3)
+  * Update shared library symlinks
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Mon, 03 Jun 2019 11:35:43 +0200
+
+gce-compute-image-packages (20190521-0ubuntu1) eoan; urgency=medium
+
+  * New upstream version 20190521 (LP: #1830194)
+    - Fix pam_group ordering detection
+    - Restart cron on OS Login control
+    - Add PAM entry to su:account stack
+    - Retry download for metadata scripts
+    - Fix script retrieval in python3
+    - Disable boto config in python3
+    - Update SSH host keys in guest attributes.
+    - Fix XPS settings with more than 64 vCPUs
+  * Update shared library symlinks
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Wed, 22 May 2019 18:53:01 +0200
+
+gce-compute-image-packages (20190315-0ubuntu1) eoan; urgency=medium
+
+  * New upstream version 20190315 (LP: #1824212)
+    - Reorganize source tree
+    - Use pam_group with OS Login
+    - Set oom_score_adjust for google-accounts daemon
+    - Restrict permissions for google-oslogin sudoers
+    - Add OS Login support for Google prompt challenges
+    - Bug fixes
+  * Refresh patches
+  * Adjust packaging to upstream tree reorganization
+  * Ship google_set_hostname as a command, not just as an dhclient exit hook
+    matching upstream's choice
+  * Don't ship journalctl configuration snippet to forward log to console
+  * Update shared library symlinks
+  * Ignore absolute symlinks in the source package to keep Lintian happy
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Mon, 22 Apr 2019 13:57:26 +0200
+
+gce-compute-image-packages (20190124+dfsg1-0ubuntu1) disco; urgency=medium
+
+  * New upstream version 20190124 (LP: #1813246)
+    -  Update script retrieval to support Python 3
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Fri, 25 Jan 2019 12:41:07 +0700
+
+gce-compute-image-packages (20181206+dfsg1-0ubuntu1) disco; urgency=medium
+
+  [ Brian Murray ]
+  * Add 0001-set-LDFLAGS-to-prevent-undefs.patch
+
+  [ Balint Reczey ]
+  * Keep Debian patch unapplied
+  * New upstream version 20181206 (LP: #1803973)
+    - Support enabling OS Login two factor authentication
+  * Refresh patches
+  * Update Lintian overrides for renamed commands
+  * Update shared library symlinks
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Fri, 21 Dec 2018 16:54:01 +0100
+
+gce-compute-image-packages (20180905+dfsg1-0ubuntu1) cosmic; urgency=medium
+
+  [ Balint Reczey ]
+  * New upstream version 20180905+dfsg1 (LP: #1792466)
+    - Restart the network daemon if networking is restarted.
+    - Prevent setup of the default ethernet interface.
+    - Accounts daemon can now verify username is 32 characters or less.
+    - Prevent IP forwarding daemon log spam.
+    - Make default shell configurable when executing metadata scripts.
+    - Rename distro directory to distro_lib.
+  * debian/control: Update Vcs-* fields to point to the new packaging repository
+  * Update shared library symlinks
+  * Drop 0001-Adjust-tests-to-changed-LoadJsonArrayToCache-behavio.patch,
+    it is integrated upstream
+  * Build depend on debhelper (>= 9.20160709) instead of on dh-systemd
+    to keep Lintian happy.
+
+  [ Google Cloud Team ]
+  * Remove NTP dependency from packaging
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Thu, 13 Sep 2018 23:08:33 +0200
+
+gce-compute-image-packages (20180510+dfsg1-0ubuntu5) cosmic; urgency=medium
+
+  * Depend on the same version of google-compute-engine-oslogin
+  * Only Recommend rsyslog | system-log-daemon (LP: #1780109)
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Wed, 04 Jul 2018 17:22:09 +0200
+
+gce-compute-image-packages (20180510+dfsg1-0ubuntu4) cosmic; urgency=medium
+
+  * debian/patches/0004-order-shutdown-scripts-after-snapd.patch: Order
+    shutdown scripts after snapd.service.
+  * debian/patches/0005-add-snap-bin-to-path.patch: Add /snap/bin to
+    PATH for startup/shutdown scripts.
+
+ -- Daniel Watkins <oddbloke@ubuntu.com>  Thu, 17 May 2018 12:30:32 -0400
+
+gce-compute-image-packages (20180510+dfsg1-0ubuntu3) cosmic; urgency=medium
+
+  * Update prerm to stop google-network-daemon.service rather than the removed ones
+  * Only Provide irqbalance without Breaks and Replaces to ensure smooth upgrades
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Wed, 16 May 2018 19:18:25 +0200
+
+gce-compute-image-packages (20180510+dfsg1-0ubuntu2) cosmic; urgency=medium
+
+  * debian/patches/0003-order-startup-scripts-after-snap-
+    seeding.service: Ensure that snaps have been seeded before startup
+    scripts run.
+
+ -- Daniel Watkins <oddbloke@ubuntu.com>  Tue, 15 May 2018 14:12:44 -0400
+
+gce-compute-image-packages (20180510+dfsg1-0ubuntu1) cosmic; urgency=medium
+
+  [ Balint Reczey ]
+  * Break, Replace and Provide irqbalance.
+    Optimization scripts are conflicting with irqbalance and the set
+    relationships ensure removal of irqbalance when it was accidentally
+    installed.
+  * Depend on virtual system-log-daemon as an alternative of rsyslog
+  * Update copyrights
+  * New upstream version 20180510 (LP: #1770650)
+  * Refresh patches
+  * Adjust tests to changed behaviour
+  * Update symlink to shared library with updated revision
+  * debian/gce-compute-image-packages.preinst: Add debhelper token
+  * Update Lintian overrides
+
+  [ Google Cloud Team ]
+  * Add module blacklist for GCE
+  * Fix Debian install when migrating to new network daemon
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 15 May 2018 16:09:25 +0200
+
+gce-compute-image-packages (20180129+dfsg1-0ubuntu3) bionic; urgency=medium
+
+  * Drop the Recommends: on google-cloud-sdk; this is moving to be a snap
+    for 18.04 and we don't want to continue pulling in a deprecated deb.
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Thu, 12 Apr 2018 13:34:48 -0700
+
+gce-compute-image-packages (20180129+dfsg1-0ubuntu2) bionic; urgency=medium
+
+  * No-change rebuild against libcurl4
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Wed, 28 Feb 2018 06:53:40 +0000
+
+gce-compute-image-packages (20180129+dfsg1-0ubuntu1) bionic; urgency=medium
+
+  [ Balint Reczey ]
+  * Override false positive maintainer-script-empty Lintian warning
+  * Suggest libpam-cracklib instead of recommending it
+    libpam-cracklib was not installed on cloud images before due to using
+    --no-install-recommends when installing gce-compute-image-packages, but this
+    state could have been surprising for users. (LP: #1741989)
+  * New upstream version 20180129+dfsg1 (LP: #1746588)
+    - Close socket connections when requesting metadata.
+    - Change the OS Login uid restriction to allow uid 1000.
+    - Improve hostname setting, including restarting rsyslog
+
+  [ Zach Marano from Google Cloud Team ]
+  * Update symlink to shared library with updated revision
+  * Depend on rsyslog
+  * Force IPv4 for Debian apt configs
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Wed, 31 Jan 2018 20:14:23 +0100
+
+gce-compute-image-packages (20171129+dfsg1-0ubuntu1) bionic; urgency=medium
+
+  [ Balint Reczey ]
+  * Add minimal debian/google-compute-engine-oslogin.prerm to fix upgrades
+    (LP: #1733878)
+  * New upstream version 20171129+dfsg1
+    - Generate SSH host keys when none are present.
+    - Improve logging when activating OS Login.
+    - Fix parsing logic for expiration time on SSH public keys.
+    - Fix home directory creation PAM config.
+  * Update symlink to shared library with updated revision
+  * Use -I/usr/include/json-c for building tests
+
+  [ Ludovic Gasc ]
+  * Add systemd as valid ntp daemon
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Fri, 01 Dec 2017 19:40:05 +0100
+
+gce-compute-image-packages (20171025+dfsg1-0ubuntu1) bionic; urgency=medium
+
+  * New upstream version 20171025+dfsg1 (LP: #1729046)
+   - Update set_hostname file name to prevent conflict
+   - Add apt config to prevent auto-removal of google-compute-engine
+   - Remove logging when checking OS Login status
+  * Update symlink to shared library with updated patch version
+  * Update packaging for changing set_hostname to google_set_hostname
+  * Ship apt config to prevent auto-removal of google-compute-engine
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 31 Oct 2017 18:23:49 +0100
+
+gce-compute-image-packages (20171019+dfsg1-0ubuntu1) artful; urgency=medium
+
+  [ Balint Reczey ]
+  * New upstream version 20171019+dfsg1 (LP: #1726810)
+    - Add status option for google_oslogin_control
+    - OS Login activation via the accounts daemon
+  * Tidy up d/control with the help of cme fix dpkg-control
+  * Update symlink to shared library with updated minor version
+  * Change package priority to optional from extra
+  * Add debhelper token to prerm
+
+  [ Zach Marano from Google Cloud Team ]
+  * Depend on chrony | ntp | time-daemon instead of just ntp
+  * Move all service activation handling to
+    gce-compute-image-packages.{postinst|prerm}
+  * Make google-compute-engine depend on google-compute-engine-oslogin
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 24 Oct 2017 16:35:46 +0200
+
+gce-compute-image-packages (20171006+dfsg1-0ubuntu1) artful; urgency=medium
+
+  * List current packaging repository in debian/control
+  * New upstream version 20171006+dfsg1 (LP: #1722356)
+    - Fix system hang during VM shutdown
+    - JSON parser accepts string types for int64 values
+  * Update symlink to shared library with updated patch version
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Mon, 09 Oct 2017 19:16:04 +0200
+
+gce-compute-image-packages (20170921+dfsg1-0ubuntu1) artful; urgency=medium
+
+  [ Balint Reczey ]
+  * New upstream version 20170921+dfsg1
+  * Exclude upstream's debian/ directory to not interact with packaging
+  * Repack orig source with +dfsg1 suffix
+  * Ship sysctl configuration for Google-recommended kernel parameters
+  * Update symlink to shared library with updated patch version
+  * Make google-compute-engine-oslogin depend on openssh-server
+
+  [ Google Cloud Team ]
+  * Add DHCP exit hook script back into package.
+  * Ship systemd preset
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Fri, 22 Sep 2017 01:35:35 +0200
+
+gce-compute-image-packages (20170718-0ubuntu1) artful; urgency=medium
+
+  * Update debian/copyright
+  * New upstream version 20170718 (LP: #1705448)
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Thu, 20 Jul 2017 14:28:58 +0200
+
+gce-compute-image-packages (20170622-0ubuntu1) artful; urgency=medium
+
+  * New upstream version 20170622 (LP: #1700027)
+    - Add Linux guest environment support for OS Login
+  * Add google-compute-engine-oslogin binary package (LP: #1694571)
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Fri, 23 Jun 2017 10:42:27 +0200
+
+gce-compute-image-packages (20170609-0ubuntu1) artful; urgency=medium
+
+  * Fix empty lines in debian/rules
+  * Update copyright years
+  * New upstream version 20170609 (LP: #1699105)
+
+ -- Balint Reczey <rbalint@ubuntu.com>  Tue, 20 Jun 2017 13:06:49 +0200
+
+gce-compute-image-packages (20170523-0ubuntu1) artful; urgency=medium
+
+  * New upstream release (LP: #1696191).
+
+ -- Łukasz 'sil2100' Zemczak <lukasz.zemczak@ubuntu.com>  Tue, 06 Jun 2017 09:50:59 -0700
+
+gce-compute-image-packages (20170426-0ubuntu2) artful; urgency=medium
+
+  * debian/control:
+    - Make the python3-google-compute-engine dependency versioned for
+      gce-compute-image-packages always on the most current version
+      (LP: #1690147).
+
+ -- Łukasz 'sil2100' Zemczak <lukasz.zemczak@ubuntu.com>  Thu, 11 May 2017 14:25:24 +0200
+
+gce-compute-image-packages (20170426-0ubuntu1) artful; urgency=medium
+
+  * New upstream release (LP: #1689205).
+
+ -- Łukasz 'sil2100' Zemczak <lukasz.zemczak@ubuntu.com>  Fri, 05 May 2017 09:42:01 +0200
+
+gce-compute-image-packages (20160930-0ubuntu6) zesty; urgency=medium
+
+  * Do not restart startup or shutdown scripts on upgrade (LP: #1668327)
+
+ -- Phil Roche <phil.roche@canonical.com>  Mon, 20 Mar 2017 14:47:51 +0000
+
+gce-compute-image-packages (20160930-0ubuntu5) zesty; urgency=medium
+
+  * Install upstream-provided rsyslog configuration so that daemons can log to
+    the serial console. (LP: #1664949)
+
+ -- Daniel Watkins <daniel.watkins@canonical.com>  Wed, 15 Feb 2017 11:40:12 +0000
+
+gce-compute-image-packages (20160930-0ubuntu4) zesty; urgency=medium
+
+  * Reintroduce udev rules that configure GCE-specific behaviour.
+    (LP: #1662491)
+
+ -- Daniel Watkins <daniel.watkins@canonical.com>  Mon, 06 Feb 2017 16:22:37 +0000
+
+gce-compute-image-packages (20160930-0ubuntu3) zesty; urgency=medium
+
+  * GCE mirrors not in place before startup scripts are run (LP: #1436846)
+  * Run google-startup-scripts.service after multi-user.target (LP: #1627436)
+
+ -- Phil Roche <phil.roche@canonical.com>  Thu, 17 Nov 2016 15:09:00 +0000
+
+gce-compute-image-packages (20160930-0ubuntu2) yakkety; urgency=medium
+
+  * Document all elements of the source package in debian/copyright.
+  * Add Replaces: for our Conflicts: to ensure replacement.
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Mon, 03 Oct 2016 23:35:49 -0700
+
+gce-compute-image-packages (20160930-0ubuntu1) yakkety; urgency=medium
+
+  * New upstream release.
+
+ -- Daniel Watkins <daniel.watkins@canonical.com>  Fri, 30 Sep 2016 15:27:56 -0700
+
+gce-compute-image-packages (20160826-0ubuntu1) yakkety; urgency=medium
+
+  * Initial release. (LP: #1613677)
+
+ -- Daniel Watkins <daniel.watkins@canonical.com>  Tue, 20 Sep 2016 11:44:25 +0100

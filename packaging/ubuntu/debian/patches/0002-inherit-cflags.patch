@@ -1,0 +1,23 @@
+Description: use environment build flags.
+ The upstream makefile does not apply environment makefile flags.
+ This patch inherits the environment so that packaging-specific
+ build flags are applied.
+Author: Vladimir Petko <vladimir.petko@canonical.com>
+Bug: https://github.com/GoogleCloudPlatform/guest-oslogin/issues/139
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/google-compute-engine-oslogin/+bug/2071665
+Forwarded: no
+Last-Update: 2024-07-02
+
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -3,8 +3,8 @@
+
+ CPPFLAGS = -Iinclude -I/usr/include/json-c -I$(TOPDIR)/third_party/include
+ FLAGS = -fPIC -Wall -g
+-CFLAGS = $(FLAGS) -Wstrict-prototypes
+-CXXFLAGS = $(FLAGS)
++CFLAGS := $(CFLAGS) $(FLAGS) -Wstrict-prototypes
++CXXFLAGS := $(CXXFLAGS) $(FLAGS)
+
+ LDFLAGS = -shared -Wl,-z,defs -Wl,-soname,$(SONAME)
+ LDLIBS = -lcurl -ljson-c

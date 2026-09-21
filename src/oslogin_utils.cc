@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <cstdint>
@@ -1321,55 +1322,53 @@ static bool ApplyPolicy(const char *user_name, string email, const char *policy,
 
 static bool FileExists(const char *file_path) {
   struct stat buff;
-  return !stat(file_path, &buff);
+  return !lstat(file_path, &buff);
 }
 
 static bool CreateGoogleUserFile(string users_filedir, string user_name) {
-  std::ofstream users_file;
-
   string users_filename = (users_filedir + user_name);
-  users_file.open(users_filename.c_str());
-
-  if (!users_file.is_open()) {
+  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP;
+  int fd = open(users_filename.c_str(),
+                O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, mode);
+  if (fd < 0) {
     // If we can't open the file (meaning we can't create it) we should report failure.
     return false;
   }
 
   // This file gets sourced by sshd_config.
-  users_file << "Match User " + user_name + "\n";
-  users_file << "        AuthorizedKeysFile /dev/null\n";
+  string content = "Match User " + user_name + "\n"
+                   "        AuthorizedKeysFile /dev/null\n";
+  write(fd, content.c_str(), content.length());
 
   // We are only creating the file so we could just close it here.
-  users_file.close();
+  fchown(fd, 0, 0);
+  fchmod(fd, mode);
+  close(fd);
 
-  chown(users_filename.c_str(), 0, 0);
-  chmod(users_filename.c_str(), S_IRUSR | S_IWUSR | S_IRGRP);
   return true;
 }
 
 static bool CreateGoogleSudoersFile(string sudoers_filename, const char *user_name) {
-  std::ofstream sudoers_file;
-
-  sudoers_file.open(sudoers_filename.c_str());
-
-  if (!sudoers_file.is_open()) {
+  mode_t mode = S_IRUSR | S_IRGRP;
+  int fd = open(sudoers_filename.c_str(),
+                O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, mode);
+  if (fd < 0) {
     // If we can't open the file (meaning we can't create it) we should report failure.
     return false;
   }
 
-  sudoers_file << user_name << " ALL=(ALL) NOPASSWD: ALL\n";
-  sudoers_file.close();
+  string content = string(user_name) + " ALL=(ALL) NOPASSWD: ALL\n";
+  write(fd, content.c_str(), content.length());
 
-  chown(sudoers_filename.c_str(), 0, 0);
-  chmod(sudoers_filename.c_str(), S_IRUSR | S_IRGRP);
+  fchown(fd, 0, 0);
+  fchmod(fd, mode);
+  close(fd);
+
   return true;
 }
 
 bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response, bool cloud_run) {
-  bool users_file_exists, sudoers_exists;
   string email, users_filename, sudoers_filename;
-
-  users_file_exists = sudoers_exists = false;
 
   if (!ValidateUserName(user_name)) {
     return false;
@@ -1394,29 +1393,25 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
   }
 
   users_filename = string(kUsersDir) + user_name;
-  users_file_exists = FileExists(users_filename.c_str());
 
   if (!ApplyPolicy(user_name, email, "login", opts)) {
     // Couldn't apply "login" policy for user in question, log it and deny.
     SysLogErr("Could not grant access to organization user: %s.", user_name);
-    if (users_file_exists) {
-      remove(users_filename.c_str());
-    }
+    remove(users_filename.c_str());
     return false;
   }
 
-  if (!users_file_exists && !CreateGoogleUserFile(kUsersDir, user_name)) {
+  if (!FileExists(users_filename.c_str()) && !CreateGoogleUserFile(kUsersDir, user_name)) {
     // If we can't create users file we can't grant access, log it and deny.
     SysLogErr("Failed to create user's file.");
     return false;
   }
 
   sudoers_filename = string(kSudoersDir) + user_name;
-  sudoers_exists = FileExists(sudoers_filename.c_str());
 
   if (ApplyPolicy(user_name, email, "adminLogin", opts)) {
     // Best effort creating sudoers file, if we fail log it and grant access.
-    if (!sudoers_exists && !CreateGoogleSudoersFile(sudoers_filename, user_name)) {
+    if (!FileExists(sudoers_filename.c_str()) && !CreateGoogleSudoersFile(sudoers_filename, user_name)) {
       SysLogErr("Could not grant sudo permissions to organization user %s."
                 " Sudoers file %s is not writable.", user_name, sudoers_filename.c_str());
     }
@@ -1431,17 +1426,7 @@ bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_
 }
 
 const char *FileName(const char *file_path) {
-  int res_start = 0;
-  for (int i = 0; file_path[i] != '\0'; i++) {
-    if (file_path[i] == '/') {
-      res_start = i;
-    }
-  }
-
-  if (res_start > 0) {
-    return file_path + res_start + 1;
-  }
-
-  return file_path;
+  const char *last_slash = strrchr(file_path, '/');
+  return last_slash ? last_slash + 1 : file_path;
 }
 }  // namespace oslogin_utils

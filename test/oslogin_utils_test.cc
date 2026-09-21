@@ -14,9 +14,14 @@
 
 // Requires libgtest-dev and gtest compiled and installed.
 #include <errno.h>
+#include <fcntl.h>
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <string>
 
 #include "oslogin_utils.h"
 
@@ -757,6 +762,110 @@ TEST(UrlEncodeTest, EncodesSpecialCharacters) {
   EXPECT_EQ(UrlEncode("a b"), "a%20b");
   EXPECT_EQ(UrlEncode("a&b"), "a%26b");
   EXPECT_EQ(UrlEncode("a/b"), "a%2Fb");
+}
+
+TEST(AuthorizeUserTest, RejectsInvalidUserNames) {
+  struct AuthOptions opts = {};
+  string user_response;
+
+  // Empty username.
+  EXPECT_FALSE(AuthorizeUser("", opts, &user_response));
+
+  // Traversal and path separator injection attempts.
+  EXPECT_FALSE(AuthorizeUser("../victim", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("users/foo", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("/etc/shadow", opts, &user_response));
+
+  // Disallowed punctuation, spaces, and command injection characters.
+  EXPECT_FALSE(AuthorizeUser("user with spaces", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("attacker;id", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("user$name", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("attacker|sh", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("user`whoami`", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("user\nadmin", opts, &user_response));
+
+  // Username starting with invalid characters.
+  EXPECT_FALSE(AuthorizeUser("-admin", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("!user", opts, &user_response));
+
+  // Length limits: >32 characters.
+  string too_long_user(33, 'a');
+  EXPECT_FALSE(AuthorizeUser(too_long_user.c_str(), opts, &user_response));
+}
+
+TEST(AuthorizeUserTest, HandlesMdsFailureGracefully) {
+  struct AuthOptions opts = {};
+  opts.admin_policy_required = false;
+  opts.security_key = false;
+  opts.fingerprint = nullptr;
+  opts.fp_len = 0;
+  string user_response;
+
+  // With a valid username format, AuthorizeUser proceeds to MDS check.
+  // In an environment without metadata server, it must safely fail and return false without crashing.
+  EXPECT_FALSE(AuthorizeUser("testuser", opts, &user_response));
+  EXPECT_FALSE(AuthorizeUser("testuser", opts, &user_response, /*cloud_run=*/true));
+}
+
+TEST(AuthorizeUserTest, RejectsWhenAdminPolicyRequiredAndMdsUnavailable) {
+  struct AuthOptions opts = {};
+  opts.admin_policy_required = true;
+  opts.security_key = false;
+  opts.fingerprint = nullptr;
+  opts.fp_len = 0;
+  string user_response;
+
+  EXPECT_FALSE(AuthorizeUser("testadmin", opts, &user_response));
+}
+
+TEST(AuthorizeUserJourneyTest, ParseUserResponseToEmail) {
+  string valid_response =
+      "{\"loginProfiles\":[{\"name\":\"user@example.com\"}]}";
+  string email;
+  EXPECT_TRUE(ParseJsonToEmail(valid_response, &email));
+  EXPECT_EQ(email, "user@example.com");
+
+  // Missing name field in loginProfiles.
+  string missing_email = "{\"loginProfiles\":[{}]}";
+  email.clear();
+  EXPECT_FALSE(ParseJsonToEmail(missing_email, &email));
+
+  // Missing loginProfiles.
+  string missing_profiles = "{}";
+  email.clear();
+  EXPECT_FALSE(ParseJsonToEmail(missing_profiles, &email));
+
+  // Malformed JSON.
+  string malformed = "not-a-json";
+  email.clear();
+  EXPECT_FALSE(ParseJsonToEmail(malformed, &email));
+}
+
+TEST(AuthorizeUserJourneyTest, ParsePolicyResponseSuccessAndFailure) {
+  // Successful policy authorization.
+  string success_json = "{\"success\": true}";
+  EXPECT_TRUE(ParseJsonToSuccess(success_json));
+
+  // Denied policy authorization.
+  string denied_json = "{\"success\": false}";
+  EXPECT_FALSE(ParseJsonToSuccess(denied_json));
+
+  // Missing success field.
+  string empty_json = "{}";
+  EXPECT_FALSE(ParseJsonToSuccess(empty_json));
+
+  // Malformed JSON.
+  string malformed = "invalid json";
+  EXPECT_FALSE(ParseJsonToSuccess(malformed));
+}
+
+TEST(FileNameTest, ExtractsBasenameCorrectly) {
+  EXPECT_STREQ(FileName("/var/google-users.d/testuser"), "testuser");
+  EXPECT_STREQ(FileName("/var/google-sudoers.d/testadmin"), "testadmin");
+  EXPECT_STREQ(FileName("path/to/testuser"), "testuser");
+  EXPECT_STREQ(FileName("/testuser"), "testuser");
+  EXPECT_STREQ(FileName("testuser"), "testuser");
+  EXPECT_STREQ(FileName(""), "");
 }
 
 }  // namespace oslogin_utils

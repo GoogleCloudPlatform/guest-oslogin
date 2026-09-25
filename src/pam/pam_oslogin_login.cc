@@ -232,7 +232,7 @@ pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc,
 
   if (!ParseJsonToKey(response, "status", &status) || status != "AUTHENTICATED") {
     if (ParseJsonToKey(response, "rejectionReason", &status) && !status.empty()) {
-      pam_error(pamh, status.c_str());
+      pam_error(pamh, "%s", status.c_str());
     }
     return PAM_PERM_DENIED;
   }

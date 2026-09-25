@@ -92,9 +92,16 @@ SysLog::SysLog(const char *ident, const char *app) {
 }
 
 void SysLog::Error(const char *fmt, va_list args) {
-  std::stringstream new_fmt;
-  new_fmt << this->app << ": " << fmt;
-  vsyslog(LOG_ERR, new_fmt.str().c_str(), args);
+  // app comes from argv[0], so double any '%' to keep it from being
+  // interpreted as a format directive.
+  std::string new_fmt;
+  for (const char *p = this->app; *p != '\0'; ++p) {
+    new_fmt += *p;
+    if (*p == '%') new_fmt += '%';
+  }
+  new_fmt += ": ";
+  new_fmt += fmt;
+  vsyslog(LOG_ERR, new_fmt.c_str(), args);
 }
 
 void SysLog::Close() {

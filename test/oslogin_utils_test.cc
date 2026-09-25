@@ -114,6 +114,39 @@ TEST(NssCacheTest, TestLoadJsonArray) {
   ASSERT_EQ(test_errno, ENOENT);
 }
 
+// The cache refresher skips entries that fail with EINVAL and keeps going, so
+// an entry with a delimiter in a field must not affect the entries after it.
+TEST(NssCacheTest, SkipsPasswdEntryWithDelimiterInField) {
+  NssCache nss_cache(2);
+  string bad_user =
+      "{\"name\":\"bad@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"a:b\",\"uid\":1337,\"gid\":1337,"
+      "\"homeDirectory\":\"/home/a\",\"shell\":\"/bin/bash\"}]}";
+  string good_user =
+      "{\"name\":\"bar@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"bar\",\"uid\":1338,\"gid\":1338,"
+      "\"homeDirectory\":\"/home/bar\",\"shell\":\"/bin/bash\"}]}";
+  string response = "{\"loginProfiles\": [" + bad_user + ", " + good_user +
+                    "], \"nextPageToken\": \"token\"}";
+  ASSERT_TRUE(nss_cache.LoadJsonUsersToCache(response));
+
+  size_t buflen = 500;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+
+  ASSERT_FALSE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
+  ASSERT_EQ(test_errno, EINVAL);
+
+  test_errno = 0;
+  ASSERT_TRUE(nss_cache.GetNextPasswd(&buf, &result, &test_errno));
+  ASSERT_EQ(test_errno, 0);
+  ASSERT_STREQ(result.pw_name, "bar");
+}
+
+
 // Test successfully loading and retrieving a partial array.
 TEST(NssCacheTest, TestLoadJsonPartialArray) {
   NssCache nss_cache(2);
@@ -417,6 +450,33 @@ TEST(ParseJsonPasswdTest, ParseJsonToPasswdFailsWithEINVAL) {
   ASSERT_EQ(result.pw_gid, 1337);
 }
 
+// A colon or newline in a passwd field would corrupt the NSS cache record.
+TEST(ParseJsonPasswdTest, ParseJsonToPasswdFailsWithDelimiterInField) {
+  string colon_in_username =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"a:b\",\"uid\":1337,\"gid\":1338,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+  string newline_in_home =
+      "{\"loginProfiles\":[{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":1337,\"gid\":1338,"
+      "\"homeDirectory\":\"/home/foo\\nroot\",\"shell\":\"/bin/bash\"}]}]}";
+
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+  ASSERT_FALSE(
+      ParseJsonToPasswd(colon_in_username, &result, &buf, &test_errno));
+  ASSERT_EQ(test_errno, EINVAL);
+
+  test_errno = 0;
+  ASSERT_FALSE(ParseJsonToPasswd(newline_in_home, &result, &buf, &test_errno));
+  ASSERT_EQ(test_errno, EINVAL);
+}
+
+
 // Test parsing a partially filled response. Validate should fill empty fields
 // with default values.
 TEST(ParseJsonPasswdTest, ValidatePartialJsonResponse) {
@@ -502,6 +562,15 @@ TEST(ParseJsonToGroupsTest, ParseJsonToGroupsFails) {
   ASSERT_FALSE(ParseJsonToGroups(test_noname, &groups));
 }
 
+// A newline in the group name would inject an extra record into the NSS cache.
+TEST(ParseJsonToGroupsTest, RejectsNewlineInGroupName) {
+  string test_group =
+      "{\"posixGroups\":[{\"name\":\"g\\nsudo\",\"gid\":123452}]}";
+
+  std::vector<Group> groups;
+  ASSERT_FALSE(ParseJsonToGroups(test_group, &groups));
+}
+
 // Test parsing a valid JSON response from the metadata server.
 TEST(ParseJsonToUsersTest, ParseJsonToUsersSucceeds) {
   string test_group_users =
@@ -527,6 +596,22 @@ TEST(ParseJsonToUsersTest, ParseJsonToUsersEmptyGroupSucceeds) {
   std::vector<string> users;
   ASSERT_TRUE(ParseJsonToUsers(test_group_users, &users));
   ASSERT_TRUE(users.empty());
+}
+
+// A colon in a username would shift fields in the group member list.
+TEST(ParseJsonToUsersTest, RejectsColonInUsername) {
+  string test_group_users = "{\"usernames\":[\"user0001\",\"a:b\"]}";
+
+  std::vector<string> users;
+  ASSERT_FALSE(ParseJsonToUsers(test_group_users, &users));
+}
+
+// json_object_get_string returns NULL for a JSON null element.
+TEST(ParseJsonToUsersTest, RejectsNullUsername) {
+  string test_group_users = "{\"usernames\":[\"user0001\",null]}";
+
+  std::vector<string> users;
+  ASSERT_FALSE(ParseJsonToUsers(test_group_users, &users));
 }
 
 TEST(GetUsersForGroupTest, GetUsersForGroupSucceeds) {
@@ -744,6 +829,20 @@ TEST(ParseJsonToGroupTest, TestGroups) {
   ASSERT_EQ(result.gr_gid, 123452);
   ASSERT_STREQ(result.gr_name, "mygroup");
   ASSERT_STREQ(result.gr_passwd, "");
+}
+
+// A newline in the group name would inject an extra record into the NSS cache.
+TEST(ParseJsonToGroupTest, RejectsNewlineInGroupName) {
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen * sizeof(char));
+  ASSERT_STRNE(buffer, NULL);
+  BufferManager buf(buffer, buflen);
+
+  string group_json = "{\"name\":\"g\\nsudo\",\"gid\":\"123452\"}";
+  struct group result;
+  int errnop = 0;
+  ASSERT_FALSE(ParseJsonToGroup(group_json, &result, &buf, &errnop));
+  ASSERT_EQ(errnop, EINVAL);
 }
 
 TEST(ParseJsonToGroupsTest, TestGroups) {

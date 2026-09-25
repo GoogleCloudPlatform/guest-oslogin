@@ -61,6 +61,8 @@ static const char kUserNameRegex[] = "^[a-zA-Z0-9._][a-zA-Z0-9._-]{0,31}$";
 static const char kSudoersDir[] = "/var/google-sudoers.d/";
 static const char kUsersDir[] = "/var/google-users.d/";
 
+static const char kUnsafeNssFieldChars[] = ":\n\r";
+
 namespace oslogin_utils {
 
 // SysLog wraps syslog operations.
@@ -509,6 +511,12 @@ string UrlEncode(const string& param) {
   return encoded_param;
 }
 
+// Returns true if the value can be embedded in a colon-delimited,
+// newline-terminated NSS cache record without corrupting it.
+static bool IsSafeNssField(const char* value) {
+  return value != nullptr && strpbrk(value, kUnsafeNssFieldChars) == nullptr;
+}
+
 bool ValidateUserName(const string& user_name) {
   Regex::regex r(kUserNameRegex);
   return Regex::regex_match(user_name, r);
@@ -525,6 +533,11 @@ bool ValidatePasswd(struct passwd* result, BufferManager* buf, int* errnop) {
     return false;
   }
   if (strlen(result->pw_name) == 0) {
+    *errnop = EINVAL;
+    return false;
+  }
+  if (!IsSafeNssField(result->pw_name) || !IsSafeNssField(result->pw_dir) ||
+      !IsSafeNssField(result->pw_shell)) {
     *errnop = EINVAL;
     return false;
   }
@@ -574,6 +587,10 @@ bool ParseJsonToUsers(const string& json, std::vector<string>* result) {
   for (int idx=0; idx < (int)json_object_array_length(users); idx++) {
     json_object* user = json_object_array_get_idx(users, idx);
     const char* username = json_object_get_string(user);
+    if (!IsSafeNssField(username)) {
+      SysLogErr("Rejecting group member with missing or unsafe username.");
+      goto cleanup;
+    }
     result->push_back(string(username));
   }
   ret = true;
@@ -629,10 +646,12 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
       goto cleanup;
     }
 
-    g.name = json_object_get_string(name);
-    if (g.name == "") {
+    const char* group_name = json_object_get_string(name);
+    if (!IsSafeNssField(group_name) || group_name[0] == '\0') {
+      SysLogErr("Rejecting group with unsafe, missing, or empty group name.");
       goto cleanup;
     }
+    g.name = group_name;
 
     result->push_back(g);
   }
@@ -663,14 +682,21 @@ bool ParseJsonToGroup(const string& json, struct group* result, BufferManager*
     goto cleanup;
   }
 
+  // No initializer: `goto cleanup` above may bypass initializers.
+  const char* group_name;
   if ((gr_gid = json_object_get_int64(gid)) == 0) {
+    goto cleanup;
+  }
+
+  group_name = json_object_get_string(name);
+  if (!IsSafeNssField(group_name)) {
     goto cleanup;
   }
 
   result->gr_gid = gr_gid;
   if (!buf->AppendString("", &result->gr_passwd, errnop))
     goto cleanup;
-  if (!buf->AppendString(json_object_get_string(name), &result->gr_name,
+  if (!buf->AppendString(group_name, &result->gr_name,
                          errnop))
     goto cleanup;
 

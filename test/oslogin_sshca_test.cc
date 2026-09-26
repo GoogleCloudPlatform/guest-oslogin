@@ -12,15 +12,97 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 
 #include "oslogin_sshca.h"
 #include "oslogin_utils.h"
 
 
 using oslogin_sshca::FingerPrintFromBlob;
+
+namespace {
+
+void AppendU32(std::string* out, uint32_t v) {
+  for (int shift = 24; shift >= 0; shift -= 8) {
+    out->push_back(static_cast<char>((v >> shift) & 0xff));
+  }
+}
+
+void AppendU64(std::string* out, uint64_t v) {
+  AppendU32(out, static_cast<uint32_t>(v >> 32));
+  AppendU32(out, static_cast<uint32_t>(v));
+}
+
+void AppendString(std::string* out, const std::string& s) {
+  AppendU32(out, static_cast<uint32_t>(s.size()));
+  out->append(s);
+}
+
+std::string SshString(const std::string& s) {
+  std::string out;
+  AppendString(&out, s);
+  return out;
+}
+
+std::string Base64Encode(const std::string& in) {
+  static const char kAlphabet[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string out;
+  size_t i = 0;
+  for (; i + 2 < in.size(); i += 3) {
+    uint32_t n = (uint8_t)in[i] << 16 | (uint8_t)in[i + 1] << 8 |
+                 (uint8_t)in[i + 2];
+    out += kAlphabet[(n >> 18) & 63];
+    out += kAlphabet[(n >> 12) & 63];
+    out += kAlphabet[(n >> 6) & 63];
+    out += kAlphabet[n & 63];
+  }
+  if (i + 1 == in.size()) {
+    uint32_t n = (uint8_t)in[i] << 16;
+    out += kAlphabet[(n >> 18) & 63];
+    out += kAlphabet[(n >> 12) & 63];
+    out += "==";
+  } else if (i + 2 == in.size()) {
+    uint32_t n = (uint8_t)in[i] << 16 | (uint8_t)in[i + 1] << 8;
+    out += kAlphabet[(n >> 18) & 63];
+    out += kAlphabet[(n >> 12) & 63];
+    out += kAlphabet[(n >> 6) & 63];
+    out += '=';
+  }
+  return out;
+}
+
+const char kFingerprint[] = "b86db4ca-09fd-429e-b121-a12799614032";
+
+// Raw (unencoded) ed25519 cert body up to and including the extensions field.
+std::string BuildEd25519Cert(const std::string& principals_field,
+                             const std::string& extensions_field) {
+  std::string cert;
+  AppendString(&cert, "ssh-ed25519-cert-v01@openssh.com");
+  AppendString(&cert, std::string(32, 'n'));  // nonce
+  AppendString(&cert, std::string(32, 'k'));  // pk
+  AppendU64(&cert, 1);                        // serial
+  AppendU32(&cert, 1);                        // type (user)
+  AppendString(&cert, "key-id");
+  AppendString(&cert, principals_field);
+  AppendU64(&cert, 0);                        // valid after
+  AppendU64(&cert, ~0ULL);                    // valid before
+  AppendString(&cert, "");                    // critical options
+  AppendString(&cert, extensions_field);
+  return cert;
+}
+
+std::string DefaultExtensions() {
+  return SshString(std::string("fingerprint@google.com=") + kFingerprint) +
+         SshString("");
+}
+
+
+}  // namespace
 
 #define VALID_ECDSA_SINGLE_EXT "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg1yMhf" \
   "NVBe4etWEQNDmtxhsAD+YAb7fl/Bn0Z+GGEE9EAAAAIbmlzdHAyNTYAAABBBJ+nM2cR4B" \
@@ -343,6 +425,72 @@ using oslogin_sshca::FingerPrintFromBlob;
   "AAAAC3NzaC1lZDI1NTE5AAAAIH"   \
   "s6r2AekiTHmmoJMKxAKtKW4qcGq5Ku1+SJ1NLdZh01 fingerprint@google.com"
 
+// Guards the builder itself so the negative tests below are meaningful.
+TEST(SSHCATests, BuiltCertParses) {
+  std::string blob = Base64Encode(
+      BuildEd25519Cert(SshString("alice"), DefaultExtensions()));
+  char *fingerprint = NULL, *principal = NULL;
+  EXPECT_GT(FingerPrintFromBlob(blob.c_str(), &fingerprint, &principal), 0);
+  EXPECT_STREQ(fingerprint, kFingerprint);
+  EXPECT_STREQ(principal, "alice");
+  free(fingerprint);
+  free(principal);
+}
+
+TEST(SSHCATests, NullOutParamsAreRejected) {
+  std::string blob = Base64Encode(
+      BuildEd25519Cert(SshString("alice"), DefaultExtensions()));
+  char *fingerprint = NULL, *principal = NULL;
+  EXPECT_EQ(FingerPrintFromBlob(blob.c_str(), &fingerprint, NULL), 0);
+  EXPECT_EQ(fingerprint, (char*)NULL);
+  EXPECT_EQ(FingerPrintFromBlob(blob.c_str(), NULL, &principal), 0);
+  EXPECT_EQ(principal, (char*)NULL);
+}
+
+TEST(SSHCATests, MalformedPrincipalsFieldIsRejected) {
+  std::string oversized;
+  AppendU32(&oversized, 100);  // Claims 100 bytes, provides 3.
+  oversized += "abc";
+  const std::string cases[] = {"", std::string("\x00\x00", 2), oversized};
+  for (const std::string& principals : cases) {
+    std::string blob =
+        Base64Encode(BuildEd25519Cert(principals, DefaultExtensions()));
+    char *fingerprint = NULL, *principal = NULL;
+    EXPECT_EQ(FingerPrintFromBlob(blob.c_str(), &fingerprint, &principal), 0);
+    EXPECT_EQ(fingerprint, (char*)NULL);
+    EXPECT_EQ(principal, (char*)NULL);
+  }
+}
+
+TEST(SSHCATests, MalformedExtensionsFieldIsRejected) {
+  std::string oversized;
+  AppendU32(&oversized, 100);
+  oversized += "fingerprint@google.com=x";
+  const std::string cases[] = {"", oversized};
+  for (const std::string& extensions : cases) {
+    std::string blob =
+        Base64Encode(BuildEd25519Cert(SshString("alice"), extensions));
+    char *fingerprint = NULL, *principal = NULL;
+    EXPECT_EQ(FingerPrintFromBlob(blob.c_str(), &fingerprint, &principal), 0);
+    EXPECT_EQ(fingerprint, (char*)NULL);
+    free(principal);  // Principal is parsed before extensions.
+  }
+}
+
+// Every strict prefix of a valid cert must be rejected without reading past
+// the decoded buffer. Most useful under ASan.
+TEST(SSHCATests, EveryTruncationIsRejected) {
+  std::string cert = BuildEd25519Cert(SshString("alice"), DefaultExtensions());
+  for (size_t n = 0; n < cert.size(); ++n) {
+    std::string blob = Base64Encode(cert.substr(0, n));
+    char *fingerprint = NULL, *principal = NULL;
+    EXPECT_EQ(FingerPrintFromBlob(blob.c_str(), &fingerprint, &principal), 0)
+        << "prefix length " << n;
+    EXPECT_EQ(fingerprint, (char*)NULL);
+    free(principal);
+  }
+}
+
 TEST(SSHCATests, TestValidSingleExtCert) {
   struct {
     const char *key;
@@ -418,6 +566,75 @@ TEST(SSHCATests, TestTruncatedCertificates) {
     free(principal);
   }
 }
+
+// PROTOCOL.certkeys requires extensions to be lexically ordered by name, so an
+// extension whose name sorts before "fingerprint@google.com=..." comes first
+// in a spec-compliant cert. The parser must search every extension, not just
+// the first one. Compare with BuiltCertParses, where the fingerprint is first.
+TEST(SSHCATests, FingerprintIsFoundInAnyExtensionPosition) {
+  const std::string fp_ext = DefaultExtensions();  // Name + empty data.
+  struct {
+    const char* description;
+    std::string extensions;
+  } cases[] = {
+      {"empty extension sorted before the fingerprint",
+       SshString("aaa@example.com") + SshString("") + fp_ext},
+      {"extension with non-empty data sorted before the fingerprint",
+       SshString("data@example.com") + SshString(SshString("value")) + fp_ext},
+      {"fingerprint last of three",
+       SshString("a@example.com") + SshString("") +
+           SshString("b@example.com") + SshString("") + fp_ext},
+  };
+  for (const auto& c : cases) {
+    std::string blob =
+        Base64Encode(BuildEd25519Cert(SshString("alice"), c.extensions));
+    char *fingerprint = NULL, *principal = NULL;
+    EXPECT_GT(FingerPrintFromBlob(blob.c_str(), &fingerprint, &principal), 0)
+        << c.description;
+    EXPECT_STREQ(fingerprint, kFingerprint) << c.description;
+    EXPECT_STREQ(principal, "alice") << c.description;
+    free(fingerprint);
+    free(principal);
+  }
+}
+
+// Failure paths inside the extension search loop.
+TEST(SSHCATests, FingerprintSearchRejectsBadExtensionLists) {
+  std::string oversized_data;
+  AppendU32(&oversized_data, 1000);  // Claims 1000 bytes, provides 1.
+  oversized_data += 'x';
+  struct {
+    const char* description;
+    std::string extensions;
+  } cases[] = {
+      {"several extensions, none is the fingerprint",
+       SshString("a@example.com") + SshString("") + SshString("permit-pty") +
+           SshString("")},
+      {"fingerprint appears only in an extension's data, not its name",
+       SshString("a@example.com") +
+           SshString(SshString(std::string("fingerprint@google.com=") +
+                               kFingerprint))},
+      {"skipped extension has truncated data",
+       SshString("a@example.com") + oversized_data + DefaultExtensions()},
+      {"trailing bytes too short to hold another name",
+       SshString("a@example.com") + SshString("") +
+           std::string("\x00\x00", 2)},
+      {"fingerprint extension key is prefixed with garbage",
+       SshString("garbagefingerprint@google.com=") + kFingerprint},
+      {"fingerprint extension key but no value",
+       SshString("fingerprint@google.com") + SshString("")},
+  };
+  for (const auto& c : cases) {
+    std::string blob =
+        Base64Encode(BuildEd25519Cert(SshString("alice"), c.extensions));
+    char *fingerprint = NULL, *principal = NULL;
+    EXPECT_EQ(FingerPrintFromBlob(blob.c_str(), &fingerprint, &principal), 0)
+        << c.description;
+    EXPECT_EQ(fingerprint, (char*)NULL) << c.description;
+    free(principal);  // Principal is parsed before extensions.
+  }
+}
+
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

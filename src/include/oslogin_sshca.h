@@ -30,8 +30,8 @@
    (u_int32_t)(((const u_char *)(p))[3]))
 
 namespace oslogin_sshca {
-// The public interface - given a blob with a list of certificates we parse each of
-// them until we find the first fingerprint.
+// The public interface - given a blob with a certificate we parse it to find
+// the first fingerprint.
 int FingerPrintFromBlob(const char *blob, char **fingerprint, char **principal);
 
 inline int SkipBytes(char** b, size_t* l, size_t s) {

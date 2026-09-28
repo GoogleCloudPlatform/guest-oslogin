@@ -571,6 +571,18 @@ TEST(ParseJsonToGroupsTest, RejectsNewlineInGroupName) {
   ASSERT_FALSE(ParseJsonToGroups(test_group, &groups));
 }
 
+// A non-array "posixGroups" must be rejected, and logging the rejection must
+// not crash. SysLogErr is a no-op until SetupSysLog is called, so enable it to
+// actually exercise the format string (regression test for b/511890408).
+TEST(ParseJsonToGroupsTest, RejectsNonArrayPosixGroupsWithLoggingEnabled) {
+  SetupSysLog("oslogin_utils_test", "ParseJsonToGroupsTest");
+  std::vector<Group> groups;
+  EXPECT_FALSE(ParseJsonToGroups("{\"posixGroups\":5}", &groups));
+  EXPECT_FALSE(
+      ParseJsonToGroups("{\"posixGroups\":{\"name\":\"demo\"}}", &groups));
+  EXPECT_TRUE(groups.empty());
+}
+
 // Test parsing a valid JSON response from the metadata server.
 TEST(ParseJsonToUsersTest, ParseJsonToUsersSucceeds) {
   string test_group_users =

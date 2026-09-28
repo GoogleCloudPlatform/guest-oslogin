@@ -76,4 +76,13 @@ nss_module_register (const char *name, unsigned int *size,      \
 
 #endif /* __FreeBSD__ */
 
+// Lets the compiler check printf-style format strings against their arguments.
+// Expands to nothing on compilers that don't support the attribute.
+#if defined(__GNUC__) || defined(__clang__)
+#define OSLOGIN_PRINTF_FORMAT(fmt_idx, first_arg_idx) \
+    __attribute__((__format__(__printf__, fmt_idx, first_arg_idx)))
+#else
+#define OSLOGIN_PRINTF_FORMAT(fmt_idx, first_arg_idx)
+#endif
+
 #endif /* OSLOGIN_COMPAT_H */

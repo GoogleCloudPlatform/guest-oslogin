@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <grp.h>
 #include <json.h>
+#include <json_util.h>
 #include <nss.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -616,7 +617,7 @@ bool ParseJsonToGroups(const string& json, std::vector<Group>* result) {
   groupType = json_object_get_type(groups);
   if (groupType != json_type_array) {
     SysLogErr("parsed unexpected type for field \"posixGroups\"; "
-              "want a list, got %s", groupType);
+              "want a list, got %s", json_type_to_name(groupType));
     goto cleanup;
   }
   for (int idx = 0; idx < (int)json_object_array_length(groups); idx++) {
@@ -1340,7 +1341,7 @@ static bool ApplyPolicy(const char *user_name, string email, const char *policy,
   if (http_code != 200) {
     SysLogErr(
         "Failed to validate that OS Login user %s has %s permission; "
-        "got HTTP response code: %lu; got HTTP response body: %s",
+        "got HTTP response code: %ld; got HTTP response body: %s",
         user_name, policy, http_code, response.c_str());
     return false;
   }

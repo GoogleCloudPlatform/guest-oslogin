@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "compat.h"
+
 #define TOTP "TOTP"
 #define AUTHZEN "AUTHZEN"
 #define INTERNAL_TWO_FACTOR "INTERNAL_TWO_FACTOR"
@@ -293,7 +295,7 @@ extern void SetupSysLog(const char *ident, const char *app);
 extern void CloseSysLog();
 
 // Prints out to sys logger with ERR severity.
-extern void SysLogErr(const char *fmt, ...);
+extern void SysLogErr(const char *fmt, ...) OSLOGIN_PRINTF_FORMAT(1, 2);
 
 // AuthoOptions wraps authorization options.
 struct AuthOptions {

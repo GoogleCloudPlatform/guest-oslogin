@@ -815,6 +815,15 @@ TEST(ParseJsonChallengesTest, TestMalformedChallenges) {
   ASSERT_EQ(challenges.size(), 1);
 }
 
+TEST(ParseJsonChallengesTest, TestEmptyChallenges) {
+  string challenges_json =
+      "{\"status\":\"CHALLENGE_REQUIRED\",\"sessionId\":\"testSessionId\","
+      "\"challenges\":[]}";
+  vector<Challenge> challenges;
+  ASSERT_TRUE(ParseJsonToChallenges(challenges_json, &challenges));
+  ASSERT_TRUE(challenges.empty());
+}
+
 TEST(ParseJsonToGroupTest, TestGroups) {
   size_t buflen = 20;
   char* buffer = (char*)malloc(buflen *sizeof(char));

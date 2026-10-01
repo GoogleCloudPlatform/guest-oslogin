@@ -415,6 +415,20 @@ bool NssCache::NssGetgrentHelper(BufferManager* buf, struct group* result, int* 
 
 // ----------------- HTTP functions -----------------
 
+// Initializes libcurl exactly once per process. Safe to call from any thread:
+// C++11 guarantees thread-safe initialization of function-local statics.
+// (pthread_once would also work, but needs -pthread at link time on
+// glibc < 2.34, e.g. EL7 and EL8.)
+//
+// Intentionally never paired with curl_global_cleanup. This code runs inside
+// arbitrary host processes via NSS and PAM, and so it must not tear down
+// process-global libcurl state that the host may also be using.
+static bool EnsureCurlInitialized() {
+  static const CURLcode curl_init_result =
+      curl_global_init(CURL_GLOBAL_ALL & ~CURL_GLOBAL_SSL);
+  return curl_init_result == CURLE_OK;
+}
+
 size_t OnCurlWrite(void* buf, size_t size, size_t nmemb, void* userp) {
   if (userp) {
     std::ostream& os = *static_cast<std::ostream*>(userp);
@@ -447,7 +461,9 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
     return false;
   }
   CURLcode code(CURLE_FAILED_INIT);
-  curl_global_init(CURL_GLOBAL_ALL & ~CURL_GLOBAL_SSL);
+  if (!EnsureCurlInitialized()) {
+    return false;
+  }
   CURL* curl = curl_easy_init();
   std::ostringstream response_stream;
   int retry_count = 0;
@@ -456,7 +472,6 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
     header_list = curl_slist_append(header_list, "Metadata-Flavor: Google");
     if (header_list == NULL) {
       curl_easy_cleanup(curl);
-      curl_global_cleanup();
       return false;
     }
     do {
@@ -469,7 +484,10 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &OnCurlWrite);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_stream);
-      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+      // We run in multithreaded hosts. By default, libcurl ignores SIGPIPE and
+      // then restores the old handler. This can be racy in threaded programs.
+      curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
       curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
       if (data != "") {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
@@ -477,8 +495,8 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
 
       code = curl_easy_perform(curl);
       if (code != CURLE_OK) {
+        curl_slist_free_all(header_list);
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
         return false;
       }
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, http_code);
@@ -487,7 +505,6 @@ bool HttpDo(const string& url, const string& data, string* response, long* http_
   }
   *response = response_stream.str();
   curl_easy_cleanup(curl);
-  curl_global_cleanup();
   return true;
 }
 
@@ -500,6 +517,9 @@ bool HttpPost(const string& url, const string& data, string* response, long* htt
 }
 
 string UrlEncode(const string& param) {
+  if (!EnsureCurlInitialized()) {
+    return "";
+  }
   CURL* curl = curl_easy_init();
   char* encoded = curl_easy_escape(curl, param.c_str(), param.length());
   if (encoded == NULL) {

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <thread>
 #include <unistd.h>
 
 #include <string>
@@ -678,6 +679,21 @@ TEST(CurlClient, RetryLogic) {
   ASSERT_FALSE(ShouldRetry(404));
   ASSERT_FALSE(ShouldRetry(400));
   ASSERT_TRUE(ShouldRetry(429));
+}
+
+// Exercises the curl_easy_perform failure path. The assertion alone can't see
+// a leak; run under --config=asan so LeakSanitizer can. Requests run on a
+// separate thread (its stack is gone after join, so stale stack slots can't
+// hide a leaked pointer) and repeat so one masked block can't hide the leak.
+TEST(CurlClient, HttpGetFailsCleanlyWhenUnreachable) {
+  std::thread worker([] {
+    for (int i = 0; i < 50; ++i) {
+      string response;
+      long http_code = 0;
+      EXPECT_FALSE(HttpGet("http://127.0.0.1:1/", &response, &http_code));
+    }
+  });
+  worker.join();
 }
 
 TEST(ParseJsonEmailTest, SuccessfullyParsesEmail) {

@@ -12,97 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdint>
+#include "oslogin_sshca.h"
+
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <string>
 
-#include "oslogin_sshca.h"
 #include "oslogin_utils.h"
-
+#include "sshca_cert_builder.h"
 
 using oslogin_sshca::FingerPrintFromBlob;
-
-namespace {
-
-void AppendU32(std::string* out, uint32_t v) {
-  for (int shift = 24; shift >= 0; shift -= 8) {
-    out->push_back(static_cast<char>((v >> shift) & 0xff));
-  }
-}
-
-void AppendU64(std::string* out, uint64_t v) {
-  AppendU32(out, static_cast<uint32_t>(v >> 32));
-  AppendU32(out, static_cast<uint32_t>(v));
-}
-
-void AppendString(std::string* out, const std::string& s) {
-  AppendU32(out, static_cast<uint32_t>(s.size()));
-  out->append(s);
-}
-
-std::string SshString(const std::string& s) {
-  std::string out;
-  AppendString(&out, s);
-  return out;
-}
-
-std::string Base64Encode(const std::string& in) {
-  static const char kAlphabet[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  std::string out;
-  size_t i = 0;
-  for (; i + 2 < in.size(); i += 3) {
-    uint32_t n = (uint8_t)in[i] << 16 | (uint8_t)in[i + 1] << 8 |
-                 (uint8_t)in[i + 2];
-    out += kAlphabet[(n >> 18) & 63];
-    out += kAlphabet[(n >> 12) & 63];
-    out += kAlphabet[(n >> 6) & 63];
-    out += kAlphabet[n & 63];
-  }
-  if (i + 1 == in.size()) {
-    uint32_t n = (uint8_t)in[i] << 16;
-    out += kAlphabet[(n >> 18) & 63];
-    out += kAlphabet[(n >> 12) & 63];
-    out += "==";
-  } else if (i + 2 == in.size()) {
-    uint32_t n = (uint8_t)in[i] << 16 | (uint8_t)in[i + 1] << 8;
-    out += kAlphabet[(n >> 18) & 63];
-    out += kAlphabet[(n >> 12) & 63];
-    out += kAlphabet[(n >> 6) & 63];
-    out += '=';
-  }
-  return out;
-}
-
-const char kFingerprint[] = "b86db4ca-09fd-429e-b121-a12799614032";
-
-// Raw (unencoded) ed25519 cert body up to and including the extensions field.
-std::string BuildEd25519Cert(const std::string& principals_field,
-                             const std::string& extensions_field) {
-  std::string cert;
-  AppendString(&cert, "ssh-ed25519-cert-v01@openssh.com");
-  AppendString(&cert, std::string(32, 'n'));  // nonce
-  AppendString(&cert, std::string(32, 'k'));  // pk
-  AppendU64(&cert, 1);                        // serial
-  AppendU32(&cert, 1);                        // type (user)
-  AppendString(&cert, "key-id");
-  AppendString(&cert, principals_field);
-  AppendU64(&cert, 0);                        // valid after
-  AppendU64(&cert, ~0ULL);                    // valid before
-  AppendString(&cert, "");                    // critical options
-  AppendString(&cert, extensions_field);
-  return cert;
-}
-
-std::string DefaultExtensions() {
-  return SshString(std::string("fingerprint@google.com=") + kFingerprint) +
-         SshString("");
-}
-
-
-}  // namespace
+using sshca_test::AppendU32;
+using sshca_test::Base64Encode;
+using sshca_test::BuildEd25519Cert;
+using sshca_test::DefaultExtensions;
+using sshca_test::kFingerprint;
+using sshca_test::SshString;
 
 #define VALID_ECDSA_SINGLE_EXT "AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAg1yMhf" \
   "NVBe4etWEQNDmtxhsAD+YAb7fl/Bn0Z+GGEE9EAAAAIbmlzdHAyNTYAAABBBJ+nM2cR4B" \

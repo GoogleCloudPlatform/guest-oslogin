@@ -82,3 +82,15 @@ optional {
     }
     allow systemd_userdbd_t http_port_t:tcp_socket name_connect;
 }
+
+#============= systemd_logind_t (RHEL 7/8/9/10 support) ==============
+# Required for NSS lookups performed directly by systemd-logind when the local
+# passwd cache does not contain the user (e.g. when user enumeration is
+# disabled) and systemd-userdbd is not installed.
+
+optional {
+    require {
+        type systemd_logind_t;
+    }
+    allow systemd_logind_t http_port_t:tcp_socket name_connect;
+}

@@ -65,6 +65,8 @@ make %{?_smp_mflags} LDLIBS="-lcurl -ljson-c -lboost_regex"
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SELINUX=y
+install -d %{buildroot}/lib/systemd/system/systemd-logind.service.d
+install -m 0644 systemd-logind-oslogin.conf %{buildroot}/lib/systemd/system/systemd-logind.service.d/oslogin.conf
 
 %files
 %doc
@@ -85,6 +87,7 @@ make install DESTDIR=%{buildroot} LIBDIR=/%{_lib} VERSION=%{version} INSTALL_SEL
 %{_mandir}/man8/libnss_cache_oslogin.so.2.8.gz
 /lib/systemd/system/google-oslogin-cache.service
 /lib/systemd/system/google-oslogin-cache.timer
+/lib/systemd/system/systemd-logind.service.d/oslogin.conf
 /lib/systemd/system-preset/90-google-compute-engine-oslogin.preset
 /var/google-users.d/README
 
@@ -97,6 +100,11 @@ if [ $1 -eq 1 ]; then
     systemctl daemon-reload >/dev/null 2>&1 || :
     systemctl start google-oslogin-cache.timer >/dev/null 2>&1 || :
   fi
+fi
+
+if [ -d /run/systemd/system ]; then
+  systemctl daemon-reload >/dev/null 2>&1 || :
+  systemctl try-restart systemd-logind.service >/dev/null 2>&1 || :
 fi
 
 /sbin/ldconfig

@@ -27,26 +27,20 @@
 #include <fstream>
 #include <ios>
 #include <string>
-#include <vector>
 
 #include "include/compat.h"
 #include "include/oslogin_passwd_cache_writer.h"
 #include "include/oslogin_utils.h"
 
 using oslogin_utils::BufferManager;
-using oslogin_utils::MutexLock;
 using oslogin_utils::NssCache;
-using oslogin_utils::GetUsersForGroup;
 
 // File paths for the nss cache file.
 static const char kDefaultFilePath[] = K_DEFAULT_PFILE_PATH;
 static const char kDefaultBackupFilePath[] = K_DEFAULT_BACKUP_PFILE_PATH;
-static const char kDefaultGroupPath[] = K_DEFAULT_GFILE_PATH;
-static const char kDefaultBackupGroupPath[] = K_DEFAULT_BACKUP_GFILE_PATH;
 
-// Local NSS Cache size. This affects the maximum number of passwd or group
+// Local NSS Cache size. This affects the maximum number of passwd
 // entries per http request.
-static const uint64_t kNssGroupCacheSize = 499;
 static const uint64_t kNssPasswdCacheSize = 2048;
 
 // Passwd buffer size. We are guaranteed that a single OS Login user will not
@@ -145,106 +139,6 @@ int refreshpasswdcache(bool cloud_run) {
   return 0;
 }
 
-int refreshgroupcache() {
-  syslog(LOG_INFO, "Refreshing group entry cache");
-  int error_code = 0;
-  // Temporary buffer to hold passwd entries before writing.
-  char buffer[kPasswdBufferSize];
-  NssCache nss_cache(kNssGroupCacheSize);
-
-  std::ofstream cache_file(kDefaultBackupGroupPath);
-  if (cache_file.fail()) {
-    syslog(LOG_ERR, "Failed to open file %s.", kDefaultBackupGroupPath);
-    return -1;
-  }
-  cache_file << std::unitbuf;  // enable automatic flushing
-  cache_file.exceptions(
-      cache_file.exceptions() | std::ofstream::failbit | std::ofstream::badbit);
-  chown(kDefaultBackupGroupPath, 0, 0);
-  chmod(kDefaultBackupGroupPath, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-  struct group grp;
-  nss_cache.Reset();
-  std::vector<string> users;
-  while (!nss_cache.OnLastPage() || nss_cache.HasNextEntry()) {
-    BufferManager buffer_manager(buffer, kPasswdBufferSize);
-    if (!nss_cache.NssGetgrentHelper(&buffer_manager, &grp, &error_code)) {
-      if (error_code == ERANGE) {
-        syslog(LOG_ERR, "Group entry size out of range, skipping");
-      } else if (error_code == EINVAL) {
-        syslog(LOG_ERR, "Malformed group entry, skipping");
-      } else if (error_code == ENOENT) {
-        syslog(LOG_ERR, "Failure getting groups, quitting");
-        break;
-      } else if (error_code == ENOMSG) {
-        // ENOMSG means OS Login is not enabled.
-        break;
-      }
-      continue;
-    }
-    std::string name(grp.gr_name);
-    users.clear();
-    if (!GetUsersForGroup(name, &users, &error_code)) {
-      syslog(LOG_ERR,
-             "Error getting users for group %s (error_code %d), skipping.",
-             grp.gr_name, error_code);
-      continue;
-    }
-    try {
-      cache_file
-          << grp.gr_name << ":" << grp.gr_passwd << ":" << grp.gr_gid << ":";
-      for (int i = 0; i < (int)users.size(); i++) {
-        if (i > 0) {
-          cache_file << ",";
-        }
-        cache_file << users[i];
-      }
-      cache_file << "\n";
-    }
-    catch (const std::ofstream::failure &e) {
-      syslog(LOG_ERR, "Exception writing file");
-      error_code = ENOENT;
-      break;
-    }
-  }
-  try {
-    cache_file.close();
-  }
-  catch (const std::ofstream::failure &e) {
-    syslog(LOG_ERR, "Exception closing file");
-    error_code = ENOENT;
-  }
-
-  if (error_code == ENOMSG) {
-    remove(kDefaultBackupGroupPath);
-    // Do not return -1 because groups might be disabled.
-    return 0;
-  }
-  if (error_code == ENOENT) {
-    syslog(LOG_ERR,
-           "Failed to get groups, not updating group cache file, removing %s.",
-           kDefaultBackupGroupPath);
-    // If the cache file already exists, we don't want to overwrite it on a
-    // server error. So remove the backup file and return here.
-    struct stat buffer;
-    if (stat(kDefaultGroupPath, &buffer) == 0) {
-      remove(kDefaultBackupGroupPath);
-      return -1;
-    }
-  }
-
-  if (rename(kDefaultBackupGroupPath, kDefaultGroupPath) != 0) {
-    syslog(LOG_ERR,
-           "Error moving %s to %s.",
-           kDefaultBackupGroupPath,
-           kDefaultGroupPath);
-    remove(kDefaultBackupGroupPath);
-    return -1;
-  }
-
-  return 0;
-}
-
 int main(int argc, char* argv[]) {
   bool cloud_run = false;
   openlog("oslogin_cache_refresh", LOG_PID|LOG_PERROR, LOG_USER);
@@ -258,14 +152,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  int u_res, g_res;
-  u_res = refreshpasswdcache(cloud_run);
-  if (cloud_run) {
-    return u_res;
-  }
-  g_res = refreshgroupcache();
+  int u_res = refreshpasswdcache(cloud_run);
   closelog();
-  if (u_res != 0)
-    return u_res;
-  return g_res;
+  return u_res;
 }

@@ -13,6 +13,13 @@ extern "C" {
 enum nss_status _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
                                               char *buffer, size_t buflen,
                                               int *errnop);
+enum nss_status _nss_cache_oslogin_getgrnam_r(const char* name,
+                                              struct group* result,
+                                              char* buffer, size_t buflen,
+                                              int* errnop);
+enum nss_status _nss_cache_oslogin_getgrent_r(struct group* result,
+                                              char* buffer, size_t buflen,
+                                              int* errnop);
 }
 
 extern "C" {
@@ -48,7 +55,10 @@ enum nss_status passwd_cache_iter_next_r(PasswdCache* cache,
 enum nss_status lookup_passwd_by_name_r(PasswdCache* cache, const char* name,
                                         struct passwd* result, char* buffer,
                                         size_t buflen, int* errnop) {
-  return NSS_STATUS_NOTFOUND;
+  if (mock_lookup_status == NSS_STATUS_SUCCESS) {
+    *result = mock_user;
+  }
+  return mock_lookup_status;
 }
 }
 
@@ -94,4 +104,79 @@ TEST_F(NssCacheOsloginTest, GetgrgidSelfGroupSuccess) {
   EXPECT_EQ(result.gr_gid, 1001);
   EXPECT_STREQ(result.gr_mem[0], "testuser");
   EXPECT_TRUE(result.gr_mem[1] == NULL);
+}
+
+TEST_F(NssCacheOsloginTest, GetgrgidNotFoundWhenUserMissing) {
+  mock_lookup_status = NSS_STATUS_NOTFOUND;
+
+  struct group result;
+  char buffer[1024];
+  int errnop = 0;
+
+  enum nss_status status = _nss_cache_oslogin_getgrgid_r(
+      1001, &result, buffer, sizeof(buffer), &errnop);
+
+  EXPECT_EQ(status, NSS_STATUS_NOTFOUND);
+}
+
+TEST_F(NssCacheOsloginTest, GetgrnamSelfGroupBufferTooSmall) {
+  static char username[] = "testuser";
+  mock_user.pw_name = username;
+  mock_user.pw_uid = 1001;
+  mock_user.pw_gid = 1001;
+
+  struct group result;
+  char buffer[1];
+  int errnop = 0;
+
+  enum nss_status status = _nss_cache_oslogin_getgrnam_r(
+      "testuser", &result, buffer, sizeof(buffer), &errnop);
+
+  EXPECT_EQ(status, NSS_STATUS_TRYAGAIN);
+  EXPECT_EQ(errnop, ERANGE);
+}
+
+TEST_F(NssCacheOsloginTest, GetgrnamSelfGroupSuccess) {
+  static char username[] = "testuser";
+  mock_user.pw_name = username;
+  mock_user.pw_uid = 1001;
+  mock_user.pw_gid = 1001;
+
+  struct group result;
+  char buffer[1024];
+  int errnop = 0;
+
+  enum nss_status status = _nss_cache_oslogin_getgrnam_r(
+      "testuser", &result, buffer, sizeof(buffer), &errnop);
+
+  EXPECT_EQ(status, NSS_STATUS_SUCCESS);
+  EXPECT_STREQ(result.gr_name, "testuser");
+  EXPECT_STREQ(result.gr_passwd, "x");
+  EXPECT_EQ(result.gr_gid, 1001);
+  EXPECT_STREQ(result.gr_mem[0], "testuser");
+  EXPECT_TRUE(result.gr_mem[1] == NULL);
+}
+
+TEST_F(NssCacheOsloginTest, GetgrnamNotFoundWhenUserMissing) {
+  mock_lookup_status = NSS_STATUS_NOTFOUND;
+
+  struct group result;
+  char buffer[1024];
+  int errnop = 0;
+
+  enum nss_status status = _nss_cache_oslogin_getgrnam_r(
+      "nonexistent", &result, buffer, sizeof(buffer), &errnop);
+
+  EXPECT_EQ(status, NSS_STATUS_NOTFOUND);
+}
+
+TEST_F(NssCacheOsloginTest, GetgrentReturnsNotFound) {
+  struct group result;
+  char buffer[1024];
+  int errnop = 0;
+
+  enum nss_status status =
+      _nss_cache_oslogin_getgrent_r(&result, buffer, sizeof(buffer), &errnop);
+
+  EXPECT_EQ(status, NSS_STATUS_NOTFOUND);
 }

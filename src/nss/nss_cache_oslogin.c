@@ -40,7 +40,6 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static FILE *p_file = NULL;
 static PasswdCache *p_cache = NULL;
 static PasswdCacheIter p_iter;
-static FILE *g_file = NULL;
 #ifdef BSD
 extern int fgetpwent_r(FILE *, struct passwd *, char *, size_t,
                        struct passwd **);
@@ -257,47 +256,12 @@ _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
   return ret;
 }
 
-// _nss_cache_oslogin_setgrent_locked()
-// Internal setup routine
-
-static enum nss_status
-_nss_cache_oslogin_setgrent_locked(void) {
-  if (g_file) {
-    fclose(g_file);
-  }
-
-  g_file = fopen(OSLOGIN_GROUP_CACHE_PATH, "re");
-
-  if (g_file) {
-    return NSS_STATUS_SUCCESS;
-  } else {
-    return NSS_STATUS_UNAVAIL;
-  }
-}
-
 // _nss_cache_oslogin_setgrent()
 // Called by NSS to open the group file
 // 'stayopen' parameter is ignored.
 
 enum nss_status
 _nss_cache_oslogin_setgrent(int stayopen) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
-}
-
-// _nss_cache_oslogin_endgrent_locked()
-// Internal close routine
-
-static enum nss_status
-_nss_cache_oslogin_endgrent_locked(void) {
-  DEBUG("%s %s\n", "Closing", OSLOGIN_GROUP_CACHE_PATH);
-  if (g_file) {
-    fclose(g_file);
-    g_file = NULL;
-  }
   return NSS_STATUS_SUCCESS;
 }
 
@@ -306,51 +270,7 @@ _nss_cache_oslogin_endgrent_locked(void) {
 
 enum nss_status
 _nss_cache_oslogin_endgrent(void) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_endgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
-}
-
-// _nss_cache_oslogin_getgrent_r_locked()
-// Called internally to return the next entry from the group file
-
-static enum nss_status
-_nss_cache_oslogin_getgrent_r_locked(struct group *result,
-                                     char *buffer, size_t buflen, int *errnop) {
-  enum nss_status ret = NSS_STATUS_SUCCESS;
-
-  if (g_file == NULL) {
-    DEBUG("g_file == NULL, going to setgrent\n");
-    ret = _nss_cache_oslogin_setgrent_locked();
-  }
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    fpos_t position;
-
-    fgetpos(g_file, &position);
-    if (fgetgrent_r(g_file, result, buffer, buflen, &result) == 0) {
-      DEBUG("Returning group %s (%u)\n", result->gr_name, result->gr_gid);
-    } else {
-      /* Rewind back to where we were just before, otherwise the data read
-       * into the buffer is probably going to be lost because there's no
-       * guarantee that the caller is going to have preserved the line we
-       * just read.  Note that glibc's nss/nss_files/files-XXX.c does
-       * something similar in CONCAT(_nss_files_get,ENTNAME_r) (around
-       * line 242 in glibc 2.4 sources).
-       */
-      if (errno == ENOENT) {
-        errno = 0;
-      } else {
-        fsetpos(g_file, &position);
-      }
-      *errnop = errno;
-      ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
-    }
-  }
-
-  return ret;
+  return NSS_STATUS_SUCCESS;
 }
 
 // _nss_cache_oslogin_getgrent_r()
@@ -359,11 +279,7 @@ _nss_cache_oslogin_getgrent_r_locked(struct group *result,
 enum nss_status
 _nss_cache_oslogin_getgrent_r(struct group *result, char *buffer,
                               size_t buflen, int *errnop) {
-  enum nss_status ret;
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen, errnop);
-  NSS_CACHE_OSLOGIN_UNLOCK();
-  return ret;
+  return NSS_STATUS_NOTFOUND;
 }
 
 #define CALCULATE_PADDING_FOR_ALIGNMENT(buf_addr, bytes_to_write)              \
@@ -416,20 +332,7 @@ _nss_cache_oslogin_getgrgid_r(gid_t gid, struct group *result,
     return NSS_STATUS_SUCCESS;
   }
 
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setgrent_locked();
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen,
-                                               errnop)) == NSS_STATUS_SUCCESS) {
-      if (result->gr_gid == gid) break;
-    }
-  }
-
-  _nss_cache_oslogin_endgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-
-  return ret;
+  return NSS_STATUS_NOTFOUND;
 }
 
 // _nss_cache_oslogin_getgrnam_r()
@@ -477,20 +380,7 @@ _nss_cache_oslogin_getgrnam_r(const char *name, struct group *result,
     return NSS_STATUS_SUCCESS;
   }
 
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setgrent_locked();
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getgrent_r_locked(result, buffer, buflen,
-                                               errnop)) == NSS_STATUS_SUCCESS) {
-      if (!strcmp(result->gr_name, name)) break;
-    }
-  }
-
-  _nss_cache_oslogin_endgrent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-
-  return ret;
+  return NSS_STATUS_NOTFOUND;
 }
 
 NSS_METHOD_PROTOTYPE(__nss_compat_getpwnam_r);

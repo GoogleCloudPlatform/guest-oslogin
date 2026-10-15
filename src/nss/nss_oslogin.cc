@@ -32,17 +32,10 @@
 #include "include/compat.h"
 #include "include/oslogin_utils.h"
 
-#define MAXBUFSIZE 32768
-
 using std::string;
 
 using oslogin_utils::AddUsersToGroup;
 using oslogin_utils::BufferManager;
-using oslogin_utils::GetGroupByName;
-using oslogin_utils::GetGroupByGID;
-using oslogin_utils::GetGroupsForUser;
-using oslogin_utils::GetUsersForGroup;
-using oslogin_utils::Group;
 using oslogin_utils::HttpGet;
 using oslogin_utils::kMetadataServerUrl;
 using oslogin_utils::ParseJsonToPasswd;
@@ -111,41 +104,11 @@ _nss_oslogin_getpwnam_r(const char *name, struct passwd *result,
 enum nss_status
 getselfgrgid(gid_t gid, struct group *grp, char *buf,
              size_t buflen, int *errnop) {
+  memset(grp, 0, sizeof(struct group));
   BufferManager buffer_manager(buf, buflen);
 
-  // Look for a matching user in cache.
-  FILE *p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
-  if (p_file != NULL) {
-    struct passwd user;
-    struct passwd *userp = NULL;
-    char userbuf[MAXBUFSIZE];
-
-    while (fgetpwent_r(p_file, &user, userbuf, MAXBUFSIZE, &userp) == 0) {
-      if (user.pw_uid == gid) {
-        memset(grp, 0, sizeof(struct group));
-
-        // Copy from userbuf to user-provided buffer.
-        if (!buffer_manager.AppendString(user.pw_name, &grp->gr_name, errnop)) {
-          fclose(p_file);
-          return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-        }
-
-        // Add user to group.
-        std::vector<string> members;
-        members.push_back(string(user.pw_name));
-        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop)) {
-          fclose(p_file);
-          return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-        }
-
-        fclose(p_file);
-        return NSS_STATUS_SUCCESS;
-      }
-    }
-    fclose(p_file);
-  }
-
-  // Look for matching user in backend.
+  // Cached users' self-groups are served by nss_cache_oslogin from
+  // OSLOGIN_PASSWD_CACHE_PATH, so only the metadata server is consulted here.
   std::stringstream url;
   url << kMetadataServerUrl << "users?uid=" << gid;
 
@@ -161,11 +124,21 @@ getselfgrgid(gid_t gid, struct group *grp, char *buf,
     return NSS_STATUS_NOTFOUND;
   }
 
+  // A self-group only exists while the user's primary group is still the
+  // self-group (GID == UID). If an administrator has assigned a different
+  // primary group, there is no self-group to report. This matches the check in
+  // nss_cache_oslogin.
   if (result.pw_gid != result.pw_uid) {
     return NSS_STATUS_NOTFOUND;
   }
   // Set the group name to the name of the matching user.
   if (!buffer_manager.AppendString(result.pw_name, &grp->gr_name, errnop)) {
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+  }
+  // Use "x" (no usable group password), matching nss_cache_oslogin. Never
+  // leave this empty: group(5) describes an empty group password as "no
+  // password needed".
+  if (!buffer_manager.AppendString("x", &grp->gr_passwd, errnop)) {
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
   }
 
@@ -185,37 +158,11 @@ getselfgrgid(gid_t gid, struct group *grp, char *buf,
 enum nss_status
 getselfgrnam(const char* name, struct group *grp,
              char *buf, size_t buflen, int *errnop) {
+  memset(grp, 0, sizeof(struct group));
   BufferManager buffer_manager(buf, buflen);
 
-  // Look for a matching user in cache.
-  FILE *p_file = fopen(OSLOGIN_PASSWD_CACHE_PATH, "re");
-  if (p_file != NULL) {
-    struct passwd user;
-    struct passwd *userp = NULL;
-    char userbuf[MAXBUFSIZE];
-
-    while (fgetpwent_r(p_file, &user, userbuf, MAXBUFSIZE, &userp) == 0) {
-      if (strcmp(user.pw_name, name) == 0) {
-        memset(grp, 0, sizeof(struct group));
-
-        grp->gr_gid = user.pw_uid;
-
-        // Add user to group.
-        std::vector<string> members;
-        members.push_back(string(name));
-        if (!AddUsersToGroup(members, grp, &buffer_manager, errnop)) {
-          fclose(p_file);
-          return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-        }
-
-        fclose(p_file);
-        return NSS_STATUS_SUCCESS;
-      }
-    }
-    fclose(p_file);
-  }
-
-  // Look for matching user in backend.
+  // Cached users' self-groups are served by nss_cache_oslogin from
+  // OSLOGIN_PASSWD_CACHE_PATH, so only the metadata server is consulted here.
   std::stringstream url;
   url << kMetadataServerUrl << "users?username=" << UrlEncode(string(name));
 
@@ -231,11 +178,21 @@ getselfgrnam(const char* name, struct group *grp,
     return NSS_STATUS_NOTFOUND;
   }
 
+  // A self-group only exists while the user's primary group is still the
+  // self-group (GID == UID). If an administrator has assigned a different
+  // primary group, there is no self-group to report. This matches the check in
+  // nss_cache_oslogin.
   if (result.pw_gid != result.pw_uid) {
     return NSS_STATUS_NOTFOUND;
   }
   // Set the group name to the name of the matching user.
   if (!buffer_manager.AppendString(result.pw_name, &grp->gr_name, errnop)) {
+    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
+  }
+  // Use "x" (no usable group password), matching nss_cache_oslogin. Never
+  // leave this empty: group(5) describes an empty group password as "no
+  // password needed".
+  if (!buffer_manager.AppendString("x", &grp->gr_passwd, errnop)) {
     return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
   }
 
@@ -256,29 +213,7 @@ getselfgrnam(const char* name, struct group *grp,
 enum nss_status
 _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
                         size_t buflen, int *errnop) {
-  // If there is no cache file, we will assume there are no groups.
-  if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0) {
-    return getselfgrgid(gid, grp, buf, buflen, errnop);
-  }
-
-  memset(grp, 0, sizeof(struct group));
-  BufferManager buffer_manager(buf, buflen);
-  if (!GetGroupByGID(gid, grp, &buffer_manager, errnop)) {
-    if (*errnop == ERANGE) {
-      return NSS_STATUS_TRYAGAIN;
-    }
-    return getselfgrgid(gid, grp, buf, buflen, errnop);
-  }
-
-  std::vector<string> users;
-  if (!GetUsersForGroup(grp->gr_name, &users, errnop)) {
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-  }
-
-  if (!users.empty() && !AddUsersToGroup(users, grp, &buffer_manager, errnop)) {
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-  }
-  return NSS_STATUS_SUCCESS;
+  return getselfgrgid(gid, grp, buf, buflen, errnop);
 }
 
 // _nss_oslogin_getgrnam_r()
@@ -287,85 +222,7 @@ _nss_oslogin_getgrgid_r(gid_t gid, struct group *grp, char *buf,
 enum nss_status
 _nss_oslogin_getgrnam_r(const char *name, struct group *grp,
                         char *buf, size_t buflen, int *errnop) {
-  // If there is no cache file, we will assume there are no groups.
-  if (access(OSLOGIN_GROUP_CACHE_PATH, R_OK) != 0) {
-    return getselfgrnam(name, grp, buf, buflen, errnop);
-  }
-
-  memset(grp, 0, sizeof(struct group));
-  BufferManager buffer_manager(buf, buflen);
-  if (!GetGroupByName(string(name), grp, &buffer_manager, errnop)) {
-    if (*errnop == ERANGE) {
-           return NSS_STATUS_TRYAGAIN;
-    }
-    return getselfgrnam(name, grp, buf, buflen, errnop);
-  }
-
-  std::vector<string> users;
-  if (!GetUsersForGroup(grp->gr_name, &users, errnop)) {
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-  }
-
-  if (!users.empty() && !AddUsersToGroup(users, grp, &buffer_manager, errnop)) {
-    return *errnop == ERANGE ? NSS_STATUS_TRYAGAIN : NSS_STATUS_NOTFOUND;
-  }
-  return NSS_STATUS_SUCCESS;
-}
-
-// _nss_cache_oslogin_initgroups_dyn()
-// Initialize groups for new session.
-
-enum nss_status
-_nss_oslogin_initgroups_dyn(const char *user, gid_t skipgroup, long int *start,
-                            long int *size, gid_t **groupsp,
-                            long int limit, int *errnop) {
-  // check if user exists in local passwd DB
-  FILE *p_file = fopen(PASSWD_PATH, "re");
-  if (p_file == NULL) {
-    return NSS_STATUS_NOTFOUND;
-  }
-
-  struct passwd *userp;
-  while ((userp = fgetpwent(p_file)) != NULL) {
-    if (strcmp(userp->pw_name, user) == 0) {
-      fclose(p_file);
-      return NSS_STATUS_NOTFOUND;
-    }
-  }
-  fclose(p_file);
-
-  std::vector<Group> grouplist;
-  if (!GetGroupsForUser(string(user), &grouplist, errnop)) {
-      return NSS_STATUS_NOTFOUND;
-  }
-
-  gid_t *groups = *groupsp;
-  int i;
-  for (i = 0; i < (int) grouplist.size(); i++) {
-    // Resize the buffer if needed.
-    if (*start == *size) {
-      gid_t *newgroups;
-      long int newsize = 2 * *size;
-      // Stop at limit if provided.
-      if (limit > 0) {
-        if (*size >= limit) {
-          *errnop = ERANGE;
-          return NSS_STATUS_TRYAGAIN;
-        }
-        newsize = MIN(limit, newsize);
-      }
-      newgroups = (gid_t *)realloc(groups, newsize * sizeof(gid_t *));
-      if (newgroups == NULL) {
-        *errnop = EAGAIN;
-        return NSS_STATUS_TRYAGAIN;
-      }
-      *groupsp = groups = newgroups;
-      *size = newsize;
-    }
-    groups[(*start)++] = grouplist[i].gid;
-  }
-
-  return NSS_STATUS_SUCCESS;
+  return getselfgrnam(name, grp, buf, buflen, errnop);
 }
 
 // nss_getpwent_r() is intentionally left unimplemented. This functionality is
@@ -375,10 +232,6 @@ nss_status _nss_oslogin_getpwent_r() { return NSS_STATUS_NOTFOUND; }
 nss_status _nss_oslogin_endpwent() { return NSS_STATUS_SUCCESS; }
 nss_status _nss_oslogin_setpwent() { return NSS_STATUS_SUCCESS; }
 
-nss_status _nss_oslogin_getgrent_r() { return NSS_STATUS_NOTFOUND; }
-nss_status _nss_oslogin_endgrent() { return NSS_STATUS_SUCCESS; }
-nss_status _nss_oslogin_setgrent() { return NSS_STATUS_SUCCESS; }
-
 NSS_METHOD_PROTOTYPE(__nss_compat_getpwnam_r);
 NSS_METHOD_PROTOTYPE(__nss_compat_getpwuid_r);
 NSS_METHOD_PROTOTYPE(__nss_compat_getpwent_r);
@@ -387,9 +240,6 @@ NSS_METHOD_PROTOTYPE(__nss_compat_endpwent);
 
 NSS_METHOD_PROTOTYPE(__nss_compat_getgrnam_r);
 NSS_METHOD_PROTOTYPE(__nss_compat_getgrgid_r);
-NSS_METHOD_PROTOTYPE(__nss_compat_getgrent_r);
-NSS_METHOD_PROTOTYPE(__nss_compat_setgrent);
-NSS_METHOD_PROTOTYPE(__nss_compat_endgrent);
 
 DECLARE_NSS_METHOD_TABLE(methods,
                          {NSDB_PASSWD, "getpwnam_r", __nss_compat_getpwnam_r,

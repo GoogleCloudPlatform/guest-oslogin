@@ -30,7 +30,6 @@
 #define INTERNAL_TWO_FACTOR "INTERNAL_TWO_FACTOR"
 #define IDV_PREREGISTERED_PHONE "IDV_PREREGISTERED_PHONE"
 #define SECURITY_KEY_OTP "SECURITY_KEY_OTP"
-#define INITGROUP_CACHE_EXPIRE_SECONDS 500
 
 
 #ifdef DEBUG
@@ -93,12 +92,6 @@ class Challenge {
   string status;
 };
 
-class Group {
- public:
-  int64_t gid;
-  string name;
-};
-
 // NssCache caches passwd entries for getpwent_r. This is used to prevent making
 // an HTTP call on every getpwent_r invocation. Stores up to cache_size entries
 // at a time. This class is not thread safe.
@@ -115,26 +108,23 @@ class NssCache {
   // Whether the cache has reached the last page of the database.
   bool OnLastPage() { return on_last_page_; }
 
-  // Grabs the next passwd or group entry. Returns true on success. Sets errnop on
+  // Grabs the next passwd entry. Returns true on success. Sets errnop on
   // failure.
   bool GetNextPasswd(BufferManager* buf, struct passwd* result, int* errnop);
-  bool GetNextGroup(BufferManager* buf, struct group* result, int* errnop);
 
-  // Loads a json array of passwd or group entries in the cache, starting at the
+  // Loads a json array of passwd entries in the cache, starting at the
   // beginning of the cache. This will remove all previous entries in the cache.
-  // response is expected to be a JSON array of passwd or group entries. Returns
+  // response is expected to be a JSON array of passwd entries. Returns
   // true on success.
   bool LoadJsonUsersToCache(string response);
-  bool LoadJsonGroupsToCache(string response, int* errnop);
 
-  // Helper method for get(pw|gr)ent nss methods. Each call will iterate through the
+  // Helper method for getpwent nss methods. Each call will iterate through the
   // OsLogin database and return the next entry.  Internally, the cache will
-  // keep track of pages of user or group entries, and will make an http call to
+  // keep track of pages of user entries, and will make an http call to
   // the server if necessary to retrieve additional entries. Returns whether
   // retrieval was successful. If true, the result will contain
   // valid data.
   bool NssGetpwentHelper(BufferManager* buf, struct passwd* result, int* errnop);
-  bool NssGetgrentHelper(BufferManager* buf, struct group* result, int* errnop);
 
   // Returns the page token for requesting the next page of entries.
   string GetPageToken() { return page_token_; }
@@ -208,26 +198,6 @@ bool ValidatePasswd(struct passwd* result, BufferManager* buf, int* errnop);
 bool AddUsersToGroup(std::vector<string> users, struct group* result,
                      BufferManager* buf, int* errnop);
 
-// Iterates through all users for a group, storing results in a provided string
-// vector.
-bool GetUsersForGroup(string groupname, std::vector<string>* users,
-                      int* errnop);
-
-// Iterates through all groups for a user, storing results in a provided string
-// vector.
-bool GetGroupsForUser(string username, std::vector<Group>* groups, int* errnop);
-
-// Parses a JSON groups response, storing results in a provided Group vector.
-bool ParseJsonToGroups(const string& json, std::vector<Group>* groups);
-
-// Parses a JSON users response, storing results in a provided string vector.
-bool ParseJsonToUsers(const string& json, std::vector<string>* users);
-
-// Gets group matching name.
-bool GetGroupByName(string name, struct group* grp, BufferManager* buf, int* errnop);
-
-// Gets group matching GID.
-bool GetGroupByGID(uint32_t gid, struct group* grp, BufferManager* buf, int* errnop);
 
 // Parses a JSON LoginProfiles response for SSH keys. Returns a vector of valid
 // ssh_keys. A key is considered valid if it's expiration date is greater than
@@ -246,8 +216,6 @@ bool ParseJsonToEmail(const string& json, string* email);
 // corresponding values set in the JSON object. Returns whether the parse was
 // successful or not. If unsuccessful, errnop will also be set.
 bool ParseJsonToPasswd(const string& response, struct passwd* result,
-                       BufferManager* buf, int* errnop);
-bool ParseJsonToGroup(const string& response, struct group* result,
                        BufferManager* buf, int* errnop);
 
 // Parses a JSON adminLogin or login response and returns whether the user has

@@ -8,4 +8,9 @@ if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-decon
   fi
 fi
 
+if [ "$1" = "configure" ]; then
+  # OS Login POSIX groups are retired, so the group cache is no longer used.
+  rm -f /etc/oslogin_group.cache /etc/oslogin_group.cache.bak
+fi
+
 #DEBHELPER#

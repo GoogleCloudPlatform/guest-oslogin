@@ -120,9 +120,8 @@ fi
 if [ -e /etc/oslogin_passwd.cache.bin ]; then
   restorecon /etc/oslogin_passwd.cache.bin
 fi
-if [ -e /etc/oslogin_group.cache ]; then
-  restorecon /etc/oslogin_group.cache
-fi
+# OS Login POSIX groups are retired, so the group cache is no longer used.
+rm -f /etc/oslogin_group.cache /etc/oslogin_group.cache.bak
 
 %preun
 %systemd_preun google-oslogin-cache.timer

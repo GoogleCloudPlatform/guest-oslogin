@@ -164,13 +164,17 @@ _nss_cache_oslogin_getpwent_r_locked(struct passwd *result, char *buffer,
   }
 
   if (ret == NSS_STATUS_SUCCESS) {
-    if (fgetpwent_r(p_file, result, buffer, buflen, &result) == 0) {
+    struct passwd *pwp = NULL;
+    int rc = fgetpwent_r(p_file, result, buffer, buflen, &pwp);
+    if (rc == 0 && pwp != NULL) {
       DEBUG("Returning user %s (%u)\n", result->pw_name, result->pw_uid);
     } else {
-      if (errno == ENOENT) {
+      if (rc == ENOENT) {
         errno = 0;
+        *errnop = 0;
+      } else {
+        *errnop = rc;
       }
-      *errnop = errno;
       ret = _nss_cache_oslogin_ent_bad_return_code(*errnop);
     }
   }
@@ -191,6 +195,41 @@ _nss_cache_oslogin_getpwent_r(struct passwd *result,
   return ret;
 }
 
+// Stateless fallback lookup in the legacy text passwd cache file.
+// Opens, scans, and closes its own FILE* handle so point lookups never disturb
+// the process-wide enumeration cursor (p_file / p_cache / p_iter).
+// If name is non-NULL, matches by pw_name; otherwise matches by pw_uid.
+static enum nss_status
+_nss_cache_oslogin_lookup_legacy_passwd(const char *name, uid_t uid,
+                                        struct passwd *result, char *buffer,
+                                        size_t buflen, int *errnop) {
+  FILE *file = fopen(OSLOGIN_PASSWD_LEGACY_CACHE_PATH, "re");
+  if (file == NULL) {
+    *errnop = errno;
+    return NSS_STATUS_UNAVAIL;
+  }
+
+  int rc = 0;
+  struct passwd *pwp = NULL;
+  while ((rc = fgetpwent_r(file, result, buffer, buflen, &pwp)) == 0 &&
+         pwp != NULL) {
+    if (name != NULL ? strcmp(pwp->pw_name, name) == 0 : pwp->pw_uid == uid) {
+      fclose(file);
+      *errnop = 0;
+      return NSS_STATUS_SUCCESS;
+    }
+  }
+
+  fclose(file);
+  if (rc == ENOENT) {
+    errno = 0;
+    *errnop = 0;
+  } else {
+    *errnop = rc;
+  }
+  return _nss_cache_oslogin_ent_bad_return_code(*errnop);
+}
+
 // _nss_cache_oslogin_getpwuid_r()
 // Find a user account by uid
 
@@ -205,23 +244,8 @@ _nss_cache_oslogin_getpwuid_r(uid_t uid, struct passwd *result,
     return status;
   }
 
-  // Fallback to legacy file format.
-  enum nss_status ret;
-
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setpwent_locked();
-
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getpwent_r_locked(
-                result, buffer, buflen, errnop)) == NSS_STATUS_SUCCESS) {
-      if (result->pw_uid == uid) break;
-    }
-  }
-
-  _nss_cache_oslogin_endpwent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-
-  return ret;
+  return _nss_cache_oslogin_lookup_legacy_passwd(NULL, uid, result, buffer,
+                                                 buflen, errnop);
 }
 
 // _nss_cache_oslogin_getpwnam_r()
@@ -238,22 +262,8 @@ _nss_cache_oslogin_getpwnam_r(const char *name, struct passwd *result,
     return status;
   }
 
-  // Fallback to legacy file format.
-  enum nss_status ret;
-
-  NSS_CACHE_OSLOGIN_LOCK();
-  ret = _nss_cache_oslogin_setpwent_locked();
-  if (ret == NSS_STATUS_SUCCESS) {
-    while ((ret = _nss_cache_oslogin_getpwent_r_locked(
-                result, buffer, buflen, errnop)) == NSS_STATUS_SUCCESS) {
-      if (!strcmp(result->pw_name, name)) break;
-    }
-  }
-
-  _nss_cache_oslogin_endpwent_locked();
-  NSS_CACHE_OSLOGIN_UNLOCK();
-
-  return ret;
+  return _nss_cache_oslogin_lookup_legacy_passwd(name, 0, result, buffer,
+                                                 buflen, errnop);
 }
 
 // _nss_cache_oslogin_setgrent()
@@ -406,15 +416,15 @@ DECLARE_NSS_METHOD_TABLE(methods,
       (void*)_nss_cache_oslogin_endpwent },
     { NSDB_PASSWD, "setpwent",   __nss_compat_setpwent,
       (void*)_nss_cache_oslogin_setpwent },
-    { NSDB_PASSWD, "getgrnam_r", __nss_compat_getgrnam_r,
+    { NSDB_GROUP,  "getgrnam_r", __nss_compat_getgrnam_r,
       (void*)_nss_cache_oslogin_getgrnam_r },
-    { NSDB_PASSWD, "getgrgid_r", __nss_compat_getgrgid_r,
+    { NSDB_GROUP,  "getgrgid_r", __nss_compat_getgrgid_r,
       (void*)_nss_cache_oslogin_getgrgid_r },
-    { NSDB_PASSWD, "getgrent_r", __nss_compat_getgrent_r,
+    { NSDB_GROUP,  "getgrent_r", __nss_compat_getgrent_r,
       (void*)_nss_cache_oslogin_getgrent_r },
-    { NSDB_PASSWD, "endgrent",   __nss_compat_endgrent,
+    { NSDB_GROUP,  "endgrent",   __nss_compat_endgrent,
       (void*)_nss_cache_oslogin_endgrent },
-    { NSDB_PASSWD, "setgrent",   __nss_compat_setgrent,
+    { NSDB_GROUP,  "setgrent",   __nss_compat_setgrent,
       (void*)_nss_cache_oslogin_setgrent },
 )
 

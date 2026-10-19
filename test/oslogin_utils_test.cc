@@ -496,7 +496,7 @@ TEST(ParseJsonPasswdTest, ValidatePartialJsonResponse) {
   ASSERT_EQ(result.pw_uid, 1337);
   ASSERT_EQ(result.pw_gid, 1337);
   ASSERT_STREQ(result.pw_name, "foo");
-  ASSERT_STREQ(result.pw_shell, "/bin/bash");
+  ASSERT_STREQ(result.pw_shell, DEFAULT_SHELL);
   ASSERT_STREQ(result.pw_dir, "/home/foo");
 }
 

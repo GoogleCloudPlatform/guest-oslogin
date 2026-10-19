@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include <security/pam_modules.h>
+#ifdef __FreeBSD__
+#include <security/pam_appl.h>
+#else
 #include <security/_pam_types.h>
+#endif
 
 #include <cstddef>
 #include <cstdio>

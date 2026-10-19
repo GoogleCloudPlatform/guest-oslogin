@@ -4,7 +4,7 @@ TOPDIR = $(realpath ..)
 CPPFLAGS += -I. -Iinclude -I/usr/include/json-c
 FLAGS = -fPIC -Wall -g
 CFLAGS += $(FLAGS) -Wstrict-prototypes
-CXXFLAGS += $(FLAGS)
+CXXFLAGS += $(FLAGS) -std=c++11
 
 LDFLAGS = -shared -Wl,-soname,$(SONAME)
 LDLIBS = -lcurl -ljson-c

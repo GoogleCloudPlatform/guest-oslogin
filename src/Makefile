@@ -22,6 +22,16 @@ SYSTEMDDIR = /lib/systemd/system
 PRESETDIR = /lib/systemd/system-preset
 GOOGLEUSERSDIR = /var/google-users.d
 
+# Version string embedded in the NSS module filenames
+# (libnss_oslogin-$(VERSION).so, libnss_cache_oslogin-$(VERSION).so).
+# Release packaging (packaging/debian/rules and the RPM spec) always passes
+# VERSION explicitly, so this default only applies to ad-hoc developer builds.
+# Releases use YYYYMMDD.NN; the .99 suffix marks an unversioned developer
+# build and sorts after any same-day release, so that ldconfig keeps the
+# libnss_*.so.2 symlinks pointed at the developer build when it is installed
+# over a packaged release.
+VERSION ?= $(shell date +%Y%m%d).99
+
 DEST_LIBDIR = $(LIBDIR)
 DEST_BINDIR = $(BINDIR)
 DEST_PAMDIR = $(PAMDIR)

@@ -13,18 +13,25 @@
 // limitations under the License.
 
 // Requires libgtest-dev and gtest compiled and installed.
+#include "oslogin_utils.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <gtest/gtest.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include <thread>
 #include <unistd.h>
 
+#include <cstring>
+#include <ios>
+#include <sstream>
 #include <string>
+#include <thread>
+#include <vector>
 
-#include "oslogin_utils.h"
+#include "compat.h"
 
 using std::string;
 using std::vector;
@@ -807,6 +814,379 @@ TEST(FileNameTest, ExtractsBasenameCorrectly) {
   EXPECT_STREQ(FileName("/testuser"), "testuser");
   EXPECT_STREQ(FileName("testuser"), "testuser");
   EXPECT_STREQ(FileName(""), "");
+}
+
+TEST(SysLogTest, CloseSysLogResetsLogger) {
+  SetupSysLog("oslogin_utils_test", "app%");
+  SysLogErr("n=%d", 1);
+  CloseSysLog();
+  // Second call is a safe no-op.
+  CloseSysLog();
+  // SetupSysLog with NULL ident is a no-op.
+  SetupSysLog(NULL, "app");
+  SysLogErr("ignored");
+}
+
+TEST(NssCacheTest, LoadJsonUsersRejectsMalformedInput) {
+  struct TestCase {
+    int page_size;
+    string json;
+    bool expected_result;
+  };
+  std::vector<TestCase> test_cases = {
+      {2, "not json", false},
+      {2, "{\"loginProfiles\":[]}", false},
+      {2, "{\"nextPageToken\":\"t\"}", false},
+      {2, "{\"nextPageToken\":\"t\",\"loginProfiles\":{}}", false},
+      {1, "{\"nextPageToken\":\"t\",\"loginProfiles\":[]}", false},
+      {1, "{\"nextPageToken\":\"t\",\"loginProfiles\":[{},{}]}", false},
+  };
+  for (const auto& tc : test_cases) {
+    NssCache nss_cache(tc.page_size);
+    EXPECT_EQ(nss_cache.LoadJsonUsersToCache(tc.json), tc.expected_result);
+  }
+}
+
+TEST(NssCacheTest, GetpwentHelperServesPreloadedPage) {
+  NssCache nss_cache(2);
+  string test_user1 =
+      "{\"name\":\"foo@example.com\",\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"foo\",\"uid\":1337,\"gid\":1337,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}";
+  string test_user2 =
+      "{\"name\":\"bar@example.com\","
+      "\"posixAccounts\":["
+      "{\"primary\":true,\"username\":\"bar\",\"uid\":1338,\"gid\":1338,"
+      "\"homeDirectory\":\"/home/bar\",\"shell\":\"/bin/bash\"}]}";
+  string response = "{\"loginProfiles\": [" + test_user1 + ", " + test_user2 +
+                    "], \"nextPageToken\": \"token\"}";
+
+  ASSERT_TRUE(nss_cache.LoadJsonUsersToCache(response));
+
+  size_t buflen = 500;
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_NE(buffer, nullptr);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+
+  EXPECT_TRUE(nss_cache.NssGetpwentHelper(&buf, &result, &test_errno));
+  EXPECT_EQ(test_errno, 0);
+  EXPECT_STREQ(result.pw_name, "foo");
+
+  EXPECT_TRUE(nss_cache.NssGetpwentHelper(&buf, &result, &test_errno));
+  EXPECT_EQ(test_errno, 0);
+  EXPECT_STREQ(result.pw_name, "bar");
+
+  free(buffer);
+}
+
+TEST(NssCacheTest, GetpwentHelperOnLastPageReturnsFalse) {
+  NssCache nss_cache(2);
+  ASSERT_TRUE(nss_cache.LoadJsonUsersToCache("{\"nextPageToken\":\"0\"}"));
+  EXPECT_TRUE(nss_cache.OnLastPage());
+
+  size_t buflen = 500;
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_NE(buffer, nullptr);
+  BufferManager buf(buffer, buflen);
+  struct passwd result;
+  int test_errno = 0;
+
+  EXPECT_FALSE(nss_cache.NssGetpwentHelper(&buf, &result, &test_errno));
+
+  free(buffer);
+}
+
+TEST(CurlClient, OnCurlWriteWritesToStream) {
+  std::ostringstream os;
+  EXPECT_EQ(OnCurlWrite((void*)"abc", 1, 3, &os), 3);
+  EXPECT_EQ(os.str(), "abc");
+}
+
+TEST(CurlClient, OnCurlWriteRejectsNullAndBadStream) {
+  EXPECT_EQ(OnCurlWrite((void*)"abc", 1, 3, NULL), 0);
+  std::ostringstream os;
+  os.setstate(std::ios::badbit);
+  EXPECT_EQ(OnCurlWrite((void*)"abc", 1, 3, &os), 0);
+}
+
+TEST(CurlClient, HttpGetRejectsNullOutputs) {
+  long http_code = 0;
+  string response;
+  EXPECT_FALSE(HttpGet("http://127.0.0.1:1/", NULL, &http_code));
+  EXPECT_FALSE(HttpGet("http://127.0.0.1:1/", &response, NULL));
+}
+
+TEST(CurlClient, HttpPostFailsCleanlyWhenUnreachable) {
+  string response;
+  long http_code = 0;
+  EXPECT_FALSE(
+      HttpPost("http://127.0.0.1:1/", "{\"a\":1}", &response, &http_code));
+}
+
+TEST(ValidatePasswdTest, RejectsEmptyName) {
+  size_t buflen = 500;
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_NE(buffer, nullptr);
+  BufferManager buf(buffer, buflen);
+  struct passwd pwd;
+  pwd.pw_uid = 1337;
+  pwd.pw_gid = 1337;
+  pwd.pw_name = (char*)"";
+  pwd.pw_dir = (char*)"";
+  pwd.pw_shell = (char*)"";
+  pwd.pw_passwd = (char*)"";
+  int test_errno = 0;
+  EXPECT_FALSE(ValidatePasswd(&pwd, &buf, &test_errno));
+  EXPECT_EQ(test_errno, EINVAL);
+  free(buffer);
+}
+
+TEST(ValidatePasswdTest, FailsWithERANGEWhenDefaultsDoNotFit) {
+  size_t len1 = strlen("/home/foo") + 1;
+  size_t len2 = len1 + strlen(DEFAULT_SHELL) + 1;
+  size_t len3 = len2 + strlen(DEFAULT_PASSWD) + 1;
+
+  struct TestCase {
+    size_t buflen;
+    bool expected_result;
+    int expected_errno;
+  };
+  std::vector<TestCase> test_cases = {
+      // No room for the default home directory.
+      {0, false, ERANGE},
+      // Home directory fits; the default shell does not.
+      {len1, false, ERANGE},
+      // Home directory and shell fit; the default passwd does not.
+      {len2, false, ERANGE},
+      // Home directory, shell and passwd fit; the empty gecos does not.
+      {len3, false, ERANGE},
+  };
+
+  for (const auto& tc : test_cases) {
+    char* buffer = (char*)malloc(tc.buflen);
+    BufferManager buf(buffer, tc.buflen);
+    struct passwd pwd;
+    pwd.pw_uid = 1337;
+    pwd.pw_gid = 1337;
+    pwd.pw_name = (char*)"foo";
+    pwd.pw_dir = (char*)"";
+    pwd.pw_shell = (char*)"";
+    pwd.pw_passwd = (char*)"";
+    int test_errno = 0;
+    EXPECT_EQ(ValidatePasswd(&pwd, &buf, &test_errno), tc.expected_result);
+    EXPECT_EQ(test_errno, tc.expected_errno);
+    free(buffer);
+  }
+}
+
+TEST(ParseJsonSshKeyTest, ReturnsEmptyOnMalformedProfile) {
+  EXPECT_TRUE(ParseJsonToSshKeys("junk").empty());
+  EXPECT_TRUE(ParseJsonToSshKeys("{}").empty());
+  EXPECT_TRUE(ParseJsonToSshKeys("{\"loginProfiles\":{}}").empty());
+  EXPECT_TRUE(ParseJsonToSshKeys("{\"loginProfiles\":[{}]}").empty());
+  EXPECT_TRUE(ParseJsonToSshKeys("{\"loginProfiles\":[{\"sshPublicKeys\":[]}]}")
+                  .empty());
+}
+
+TEST(ParseJsonSshKeyTest, SkipsNonObjectEntriesAndNonStringKeys) {
+  string json =
+      "{\"loginProfiles\":[{\"sshPublicKeys\":{"
+      "\"fp1\":\"str\","
+      "\"fp2\":{\"key\":123},"
+      "\"fp3\":{\"key\":\"ok\",\"expirationTimeUsec\":true}}}]}";
+  std::vector<string> keys = ParseJsonToSshKeys(json);
+  ASSERT_EQ(keys.size(), 1);
+  EXPECT_EQ(keys[0], "ok");
+}
+
+TEST(ParseJsonSshKeySkTest, ParsesSecurityKeys) {
+  struct TestCase {
+    string json;
+    std::vector<string> expected_keys;
+  };
+  std::vector<TestCase> test_cases = {
+      {"{\"loginProfiles\":[{\"securityKeys\":["
+       "{\"publicKey\":\"sk1\"},"
+       "{\"publicKey\":\"sk2\"}]}]}",
+       {"sk1", "sk2"}},
+      {"{\"loginProfiles\":[{\"securityKeys\":["
+       "{\"publicKey\":\"sk1\"},\"str\"]}]}",
+       {"sk1"}},
+      {"{\"loginProfiles\":[{\"securityKeys\":["
+       "{\"publicKey\":\"sk1\"},{}]}]}",
+       {"sk1"}},
+  };
+  for (const auto& tc : test_cases) {
+    EXPECT_EQ(ParseJsonToSshKeysSk(tc.json), tc.expected_keys);
+  }
+}
+
+TEST(ParseJsonSshKeySkTest, ReturnsEmptyOnMalformedProfile) {
+  std::vector<string> invalid_jsons = {
+      "junk",
+      "{}",
+      "{\"loginProfiles\":5}",
+      "{\"loginProfiles\":[{}]}",
+      "{\"loginProfiles\":[{\"securityKeys\":{}}]}",
+  };
+  for (const auto& json : invalid_jsons) {
+    EXPECT_TRUE(ParseJsonToSshKeysSk(json).empty());
+  }
+}
+
+TEST(ParseJsonPasswdTest, RejectsMalformedInput) {
+  size_t buflen = 500;
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_NE(buffer, nullptr);
+  BufferManager buf(buffer, buflen);
+  struct passwd pwd;
+
+  struct TestCase {
+    string json;
+    bool expected_result;
+    int expected_errno;
+  };
+
+  std::vector<TestCase> test_cases = {
+      {"junk", false, EINVAL},
+      {"{\"loginProfiles\":{}}", false, EINVAL},
+      {"{\"loginProfiles\":[{}]}", false, EINVAL},
+      {"{\"loginProfiles\":[{\"posixAccounts\":{}}]}", false, EINVAL},
+      {"{\"loginProfiles\":[{\"posixAccounts\":[1]}]}", false, EINVAL},
+      // uid: true (not int or string)
+      {"{\"loginProfiles\":[{\"posixAccounts\":[{\"username\":\"foo\",\"uid\":"
+       "true,"
+       "\"gid\":1337,\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/"
+       "bash\"}]}]}",
+       false, EINVAL},
+      // gid: true (not int or string)
+      {"{\"loginProfiles\":[{\"posixAccounts\":[{\"username\":\"foo\",\"uid\":"
+       "1337,"
+       "\"gid\":true,\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/"
+       "bash\"}]}]}",
+       false, EINVAL},
+      // username: 1 (not string)
+      {"{\"loginProfiles\":[{\"posixAccounts\":[{\"username\":1,\"uid\":1337,"
+       "\"gid\":1337,\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/"
+       "bash\"}]}]}",
+       false, EINVAL},
+      // homeDirectory: 1 (not string)
+      {"{\"loginProfiles\":[{\"posixAccounts\":[{\"username\":\"foo\",\"uid\":"
+       "1337,"
+       "\"gid\":1337,\"homeDirectory\":1,\"shell\":\"/bin/bash\"}]}]}",
+       false, EINVAL},
+      // shell: 1 (not string)
+      {"{\"loginProfiles\":[{\"posixAccounts\":[{\"username\":\"foo\",\"uid\":"
+       "1337,"
+       "\"gid\":1337,\"homeDirectory\":\"/home/foo\",\"shell\":1}]}]}",
+       false, EINVAL},
+  };
+
+  for (const auto& tc : test_cases) {
+    int test_errno = 0;
+    EXPECT_EQ(ParseJsonToPasswd(tc.json, &pwd, &buf, &test_errno),
+              tc.expected_result);
+    EXPECT_EQ(test_errno, tc.expected_errno);
+  }
+
+  free(buffer);
+}
+
+TEST(ParseJsonPasswdTest, FailsWithERANGEOnHomeAndShell) {
+  string json =
+      "{\"loginProfiles\":[{\"posixAccounts\":[{"
+      "\"username\":\"foo\",\"uid\":1337,\"gid\":1337,"
+      "\"homeDirectory\":\"/home/foo\",\"shell\":\"/bin/bash\"}]}]}";
+  struct passwd pwd;
+  int test_errno = 0;
+
+  // Four bytes hold "foo" but not the home directory.
+  char* buf4 = (char*)malloc(4);
+  BufferManager bm4(buf4, 4);
+  EXPECT_FALSE(ParseJsonToPasswd(json, &pwd, &bm4, &test_errno));
+  EXPECT_EQ(test_errno, ERANGE);
+  free(buf4);
+
+  // Fourteen bytes hold "foo" and "/home/foo" but not the shell.
+  char* buf14 = (char*)malloc(14);
+  BufferManager bm14(buf14, 14);
+  test_errno = 0;
+  EXPECT_FALSE(ParseJsonToPasswd(json, &pwd, &bm14, &test_errno));
+  EXPECT_EQ(test_errno, ERANGE);
+  free(buf14);
+}
+
+TEST(AddUsersToGroupTest, EmptyListIsNoop) {
+  struct group grp;
+  size_t buflen = 100;
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_NE(buffer, nullptr);
+  BufferManager buf(buffer, buflen);
+  int test_errno = 0;
+  EXPECT_TRUE(AddUsersToGroup({}, &grp, &buf, &test_errno));
+  free(buffer);
+}
+
+TEST(AddUsersToGroupTest, PopulatesNullTerminatedMemberArray) {
+  struct group grp;
+  size_t buflen = 200;
+  char* buffer = (char*)malloc(buflen);
+  ASSERT_NE(buffer, nullptr);
+  BufferManager buf(buffer, buflen);
+  int test_errno = 0;
+  std::vector<string> users = {"a", "b"};
+  EXPECT_TRUE(AddUsersToGroup(users, &grp, &buf, &test_errno));
+  ASSERT_NE(grp.gr_mem, nullptr);
+  EXPECT_STREQ(grp.gr_mem[0], "a");
+  EXPECT_STREQ(grp.gr_mem[1], "b");
+  EXPECT_EQ(grp.gr_mem[2], nullptr);
+  free(buffer);
+}
+
+TEST(AddUsersToGroupTest, FailsWithERANGE) {
+  struct group grp;
+  int test_errno = 0;
+
+  // An empty buffer cannot hold the gr_mem pointer array.
+  char buf0[1];
+  BufferManager bm0(buf0, 0);
+  EXPECT_FALSE(AddUsersToGroup({"alice"}, &grp, &bm0, &test_errno));
+  EXPECT_EQ(test_errno, ERANGE);
+
+  // Room for the two-pointer gr_mem array, but not for the member name.
+  size_t ptrs_size = 2 * sizeof(char*);
+  char* bufp = (char*)malloc(ptrs_size);
+  BufferManager bmp(bufp, ptrs_size);
+  test_errno = 0;
+  EXPECT_FALSE(AddUsersToGroup({"alice"}, &grp, &bmp, &test_errno));
+  EXPECT_EQ(test_errno, ERANGE);
+  EXPECT_EQ(grp.gr_mem, nullptr);
+  free(bufp);
+}
+
+TEST(ParseJsonEmailTest, RejectsNonArrayLoginProfiles) {
+  string email;
+  EXPECT_FALSE(ParseJsonToEmail("{\"loginProfiles\":{}}", &email));
+}
+
+TEST(ParseJsonKeyTest, RejectsInvalidJsonAndNullValue) {
+  string response;
+  EXPECT_FALSE(ParseJsonToKey("junk", "k", &response));
+  EXPECT_FALSE(ParseJsonToKey("{\"k\":null}", "k", &response));
+}
+
+TEST(ParseJsonChallengesTest, RejectsInvalidJsonAndMissingFields) {
+  std::vector<Challenge> challenges;
+  EXPECT_FALSE(ParseJsonToChallenges("junk", &challenges));
+  EXPECT_FALSE(ParseJsonToChallenges("{}", &challenges));
+  EXPECT_FALSE(ParseJsonToChallenges(
+      "{\"challenges\":[{\"challengeType\":\"TOTP\",\"status\":\"READY\"}]}",
+      &challenges));
+  EXPECT_FALSE(ParseJsonToChallenges(
+      "{\"challenges\":[{\"challengeId\":1,\"status\":\"READY\"}]}",
+      &challenges));
 }
 
 }  // namespace oslogin_utils

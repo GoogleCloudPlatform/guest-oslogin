@@ -954,19 +954,26 @@ bool ContinueSession(bool alt, const string& email, const string& user_token, co
   return ret;
 }
 
-static bool ApplyPolicy(const char *user_name, string email, const char *policy, struct AuthOptions opts) {
+string BuildAuthorizeUrl(const string& email, const string& policy,
+                         struct AuthOptions opts) {
   std::stringstream url;
-  url << kMetadataServerUrl << "authorize?email=" << UrlEncode(email) << "&policy=" << policy;
+  url << kMetadataServerUrl << "authorize?email=" << UrlEncode(email)
+      << "&policy=" << UrlEncode(policy);
 
   // Don't try to add fingerprint parameter to policy call if we don't have it.
-  if (opts.fp_len > 0) {
-    url << "&fingerprint=" << opts.fingerprint;
+  if (opts.fp_len > 0 && opts.fingerprint != NULL) {
+    url << "&fingerprint=" << UrlEncode(opts.fingerprint);
   }
+  return url.str();
+}
+
+static bool ApplyPolicy(const char *user_name, string email, const char *policy, struct AuthOptions opts) {
+  string url = BuildAuthorizeUrl(email, policy, opts);
 
   string response;
   long http_code = 0;
   // Invalid user, just leave from here - the principal will not be allowed/authorized.
-  if (!HttpGet(url.str(), &response, &http_code)) {
+  if (!HttpGet(url, &response, &http_code)) {
     SysLogErr("Failed to validate that OS Login user %s has %s permission.", user_name, policy);
     return false;
   }

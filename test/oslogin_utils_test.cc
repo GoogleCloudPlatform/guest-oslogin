@@ -709,7 +709,40 @@ TEST(UrlEncodeTest, EncodesSpecialCharacters) {
   EXPECT_EQ(UrlEncode("abc"), "abc");
   EXPECT_EQ(UrlEncode("a b"), "a%20b");
   EXPECT_EQ(UrlEncode("a&b"), "a%26b");
+  EXPECT_EQ(UrlEncode("a=b"), "a%3Db");
   EXPECT_EQ(UrlEncode("a/b"), "a%2Fb");
+}
+
+TEST(BuildAuthorizeUrlTest, EncodesQueryParametersAndFingerprint) {
+  struct AuthOptions opts = {};
+  EXPECT_EQ(BuildAuthorizeUrl("user@example.com", "login", opts),
+            "http://169.254.169.254/computeMetadata/v1/oslogin/"
+            "authorize?email=user%40example.com&policy=login");
+
+  char valid_fp[] = "b86db4ca-09fd-429e-b121-a12799614032";
+  opts.fingerprint = valid_fp;
+  opts.fp_len = strlen(valid_fp);
+  EXPECT_EQ(BuildAuthorizeUrl("user@example.com", "adminLogin", opts),
+            "http://169.254.169.254/computeMetadata/v1/oslogin/"
+            "authorize?email=user%40example.com&policy=adminLogin"
+            "&fingerprint=b86db4ca-09fd-429e-b121-a12799614032");
+
+  // Query parameter injection payload in fingerprint must be percent-encoded.
+  char injected_fp[] = "fp&policy=login&email=admin@example.com#";
+  opts.fingerprint = injected_fp;
+  opts.fp_len = strlen(injected_fp);
+  EXPECT_EQ(
+      BuildAuthorizeUrl("user@example.com", "adminLogin", opts),
+      "http://169.254.169.254/computeMetadata/v1/oslogin/"
+      "authorize?email=user%40example.com&policy=adminLogin"
+      "&fingerprint=fp%26policy%3Dlogin%26email%3Dadmin%40example.com%23");
+
+  // Null fingerprint pointer with nonzero fp_len must be safely ignored.
+  opts.fingerprint = nullptr;
+  opts.fp_len = 5;
+  EXPECT_EQ(BuildAuthorizeUrl("user@example.com", "login", opts),
+            "http://169.254.169.254/computeMetadata/v1/oslogin/"
+            "authorize?email=user%40example.com&policy=login");
 }
 
 TEST(AuthorizeUserTest, RejectsInvalidUserNames) {

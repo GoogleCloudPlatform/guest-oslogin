@@ -268,6 +268,11 @@ struct AuthOptions {
   size_t fp_len;
 };
 
+// Build the metadata server /authorize URL for the given email, policy, and
+// authorization options.
+string BuildAuthorizeUrl(const string& email, const string& policy,
+                         struct AuthOptions opts);
+
 // Perform user authorization logic & create users files and google sudoers, returns true if successful,
 // and false otherwise.
 bool AuthorizeUser(const char *user_name, struct AuthOptions opts, string *user_response, bool cloud_run=false);

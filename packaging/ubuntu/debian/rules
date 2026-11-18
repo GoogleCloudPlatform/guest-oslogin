@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+export VERSION=$(shell dpkg-parsechangelog -S Version | sed 's/-.*//')
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	cp -r /usr/src/gtest/ ./
+	dh_auto_configure
+
+override_dh_auto_test:
+	(cd gtest && cmake . && $(MAKE) )
+	make -C test CXXFLAGS="$(CXXFLAGS) -I$(CURDIR)/gtest" GTEST_DIR=$(CURDIR)/gtest
+
+override_dh_auto_install:
+	$(MAKE) DESTDIR=$(CURDIR)/debian/google-compute-engine-oslogin LIBDIR=/lib PAMDIR=/lib/$(DEB_HOST_MULTIARCH)/security install
+
+override_dh_installsystemd:
+	dh_installsystemd google-oslogin-cache.timer
+
+override_dh_clean:
+	dh_clean gtest/
